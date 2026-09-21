@@ -216,7 +216,11 @@ export function apiErrorMessage(
       )
     : undefined;
   return (
-    data?.detail ?? data?.message ?? data?.non_field_errors?.[0] ?? fieldMessage ?? fallback
+    data?.detail ??
+    data?.message ??
+    data?.non_field_errors?.[0] ??
+    fieldMessage ??
+    fallback
   );
 }
 

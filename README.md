@@ -1,4 +1,29 @@
-# React + TypeScript + Vite
+# Learninfy E-learning Admin
+
+## Environment configuration
+
+Copy `.env.example` to `.env` and set the API base URL for the environment:
+
+```bash
+cp .env.example .env
+```
+
+All authentication endpoint paths are maintained in [src/config/endpoints.json](src/config/endpoints.json). The Axios client reads `VITE_API_BASE_URL` from the environment and combines it with those paths.
+
+## Development
+
+```bash
+yarn dev
+```
+
+## Validation
+
+```bash
+yarn build
+yarn lint
+```
+
+<!-- Template notes retained below for reference. -->
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

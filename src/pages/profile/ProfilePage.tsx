@@ -1,3 +1,4 @@
+import { PasswordInput } from '../../components/ui/PasswordInput';
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 
 import {
@@ -127,11 +128,26 @@ export default function ProfilePage() {
     }
   };
 
+  useEffect(
+    () => () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    },
+    [previewUrl],
+  );
+
   const changePassword = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSaving(true);
     setError(null);
     setSuccess(null);
+    if (password.new_password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+    if (password.new_password !== password.confirm_password) {
+      setError('Passwords do not match.');
+      return;
+    }
+    setSaving(true);
     try {
       await api.post(authEndpoints.changePassword, password);
       setPassword(emptyPassword);
@@ -148,7 +164,7 @@ export default function ProfilePage() {
   const uploadAvatar = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !user) return;
-    if (!file.type.startsWith('image/')) {
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
       setError('Please choose an image file.');
       return;
     }
@@ -251,7 +267,7 @@ export default function ProfilePage() {
                   {avatar ? (
                     <img
                       src={avatar}
-                      alt={user?.full_name ?? 'Profile'}
+                      alt={user?.username ?? 'Profile'}
                       className="h-full w-full object-cover"
                     />
                   ) : (
@@ -413,13 +429,14 @@ export default function ProfilePage() {
                     ['confirm_password', 'Confirm new password'],
                   ] as const
                 ).map(([field, label]) => (
-                  <label
+                  <div
                     key={field}
                     className="grid gap-2 text-xs font-semibold text-[#707a89]"
                   >
-                    {label}
-                    <input
-                      type="password"
+                    <label htmlFor={field}>{label}</label>
+                    <PasswordInput
+                      id={field}
+                      visibilityLabel={label}
                       required
                       className={inputClass}
                       value={password[field]}
@@ -430,7 +447,7 @@ export default function ProfilePage() {
                         }))
                       }
                     />
-                  </label>
+                  </div>
                 ))}
               </div>
               <div className="mt-7 flex justify-end">

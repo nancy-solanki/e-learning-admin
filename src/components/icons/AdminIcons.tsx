@@ -130,3 +130,37 @@ export const ChevronRightIcon = (props: IconProps) => (
     <path d="m9 7 5 5-5 5" />
   </Icon>
 );
+
+export const CheckIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="m5 12 4 4L19 6" />
+  </Icon>
+);
+export const AlertIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v6m0 4h.01" />
+  </Icon>
+);
+export const EyeIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z" />
+    <circle cx="12" cy="12" r="3" />
+  </Icon>
+);
+export const EyeOffIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.5 5.3A11 11 0 0 1 12 5c7 0 10 7 10 7a16 16 0 0 1-3 4M6.5 6.5A18 18 0 0 0 2 12s3 7 10 7a11 11 0 0 0 5.5-1.5" />
+  </Icon>
+);
+
+export const CloseIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="m6 6 12 12M6 18 18 6" />
+  </Icon>
+);
+export const TrashIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M3 6h18M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M5 6l1 14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1l1-14M10 10v7m4-7v7" />
+  </Icon>
+);

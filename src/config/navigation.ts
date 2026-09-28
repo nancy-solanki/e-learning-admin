@@ -43,7 +43,7 @@ export const adminNavigation: NavigationItem[] = [
       'Review Courses',
     ],
   },
-  { label: 'Sections', icon: LayersIcon },
+  { label: 'Sections', icon: LayersIcon, submenu: ['All Sections'] },
   {
     label: 'Lectures',
     icon: LectureIcon,
@@ -79,7 +79,7 @@ export const instructorNavigation: NavigationItem[] = [
     icon: BookIcon,
     submenu: ['All Courses', 'Published Courses', 'Review Courses'],
   },
-  { label: 'Sections', icon: LayersIcon },
+  { label: 'Sections', icon: LayersIcon, submenu: ['All Sections'] },
   {
     label: 'Lectures',
     icon: LectureIcon,

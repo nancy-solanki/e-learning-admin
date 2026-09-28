@@ -15,7 +15,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: yarn
 
       - name: Install dependencies
@@ -31,10 +31,19 @@ jobs:
         run: yarn format:check
 
       - name: Vitest
-        run: yarn test
+        run: yarn test:coverage
 
       - name: Install Playwright
         run: yarn playwright install --with-deps chromium
 
       - name: Playwright
         run: yarn test:e2e
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            coverage/
+            test-results/

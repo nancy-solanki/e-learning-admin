@@ -3,7 +3,10 @@ import { z } from 'zod';
 const password = z.string().min(8, 'Password must be at least 8 characters.');
 const email = z.string().trim().email('Enter a valid email address.');
 
-export const signInSchema = z.object({ email, password });
+export const signInSchema = z.object({
+  email,
+  password: z.string().min(1, 'Password is required.'),
+});
 export const forgotPasswordSchema = z.object({ email });
 export const resetPasswordSchema = z.object({ password });
 

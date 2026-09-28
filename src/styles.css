@@ -4,8 +4,8 @@
 @theme {
   --font-sans: 'DM Sans', sans-serif;
   --font-display: 'Plus Jakarta Sans', sans-serif;
-  --color-brand: #5728ca;
-  --color-brand-dark: #4720ae;
+  --color-brand: #6c55ff;
+  --color-brand-dark: #5943df;
 }
 
 :root {
@@ -26,4 +26,12 @@ input {
 }
 button {
   cursor: pointer;
+}
+
+.admin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #454556 transparent;
+}
+button:disabled {
+  cursor: not-allowed;
 }

@@ -27,7 +27,7 @@ export default function ResetPasswordPage({
     setError,
     formState: { errors, isSubmitting },
   } = useForm<ResetPasswordValues>({
-    resolver: zodResolver(resetPasswordSchema),
+    resolver: kind === 'reset' ? zodResolver(resetPasswordSchema) : undefined,
     defaultValues: { password: '' },
   });
 

@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { AuthLayout } from '../../components/layout/AuthLayout';
 import { FormField } from '../../components/ui/FormField';
@@ -12,6 +12,8 @@ import {
   authEndpoints,
   getCurrentUser,
   saveTokens,
+  clearTokens,
+  notifyAuthChange,
   type Tokens,
 } from '../../lib/api';
 import { applyServerErrors } from '../../lib/form';
@@ -19,6 +21,12 @@ import { signInSchema, type SignInValues } from '../../lib/validation';
 
 export default function SignInPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const from: unknown = location.state?.from;
+  const destination =
+    typeof from === 'string' && /^\/(?:users|profile)(?:\?|$)/.test(from)
+      ? from
+      : '/';
   const [notice, setNotice] = useState<Notice | null>(null);
   const {
     register,
@@ -36,9 +44,11 @@ export default function SignInPage() {
     try {
       const { data } = await api.post<Tokens>(authEndpoints.signIn, values);
       saveTokens(data);
-      await getCurrentUser();
-      navigate('/', { replace: true });
+      await getCurrentUser({ force: true });
+      notifyAuthChange();
+      navigate(destination, { replace: true });
     } catch (error) {
+      clearTokens();
       applyServerErrors<SignInValues>(error, setError);
       setNotice({
         type: 'error',

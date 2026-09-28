@@ -9,7 +9,7 @@ export const ENDPOINTS = {
       `/api/v1/users/${id}/modify_user_status/`,
   },
   AUTH: {
-    SIGN_IN: '/api/v1/auth/sign-in/',
+    SIGN_IN: '/api/v1/auth/staff/sign-in/',
     SIGN_UP: '/api/v1/auth/sign-up/',
     SIGN_OUT: '/api/v1/auth/sign-out/',
     REFRESH: '/api/v1/auth/refresh/',

@@ -1,3 +1,5 @@
+import { Input, Textarea } from '../../components/ui/Input';
+import { Avatar } from '../../components/ui/Avatar';
 import { PasswordInput } from '../../components/ui/PasswordInput';
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 
@@ -177,6 +179,7 @@ export default function ProfilePage() {
     setPreviewUrl(URL.createObjectURL(file));
     try {
       setUser(await uploadUserAvatar(file));
+      setPreviewUrl(null);
       setSuccess('Profile photo updated successfully.');
     } catch (requestError: unknown) {
       setPreviewUrl(null);
@@ -188,11 +191,6 @@ export default function ProfilePage() {
       event.target.value = '';
     }
   };
-
-  const initials = `${user?.first_name?.[0] ?? ''}${user?.last_name?.[0] ?? ''}`;
-  const avatar = previewUrl ?? user?.avatar?.url;
-  const inputClass =
-    'h-11 rounded-lg border border-[#dfe5ee] bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/10';
 
   return (
     <section className="mx-auto w-full max-w-5xl py-2">
@@ -263,17 +261,11 @@ export default function ProfilePage() {
                 </p>
               </div>
               <div className="flex items-center gap-4">
-                <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-full bg-[#eeeaff] text-xl font-bold text-brand">
-                  {avatar ? (
-                    <img
-                      src={avatar}
-                      alt={user?.username ?? 'Profile'}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    initials
-                  )}
-                </div>
+                <Avatar
+                  user={user}
+                  src={previewUrl}
+                  className="h-20 w-20 text-xl ring-4 ring-white shadow-lg shadow-violet-100"
+                />
                 <div>
                   <label className="inline-flex cursor-pointer rounded-lg bg-[#f1efff] px-4 py-2 text-sm font-semibold text-brand hover:bg-[#e8e3ff]">
                     {uploading ? 'Uploading…' : 'Change photo'}
@@ -309,9 +301,8 @@ export default function ProfilePage() {
                       className="grid gap-2 text-xs font-semibold text-[#707a89]"
                     >
                       {label}
-                      <input
-                        className={inputClass}
-                        value={profile[field]}
+                      <Input
+                        value={profile[field] ?? ''}
                         onChange={(event) =>
                           updateProfileField(field, event.target.value)
                         }
@@ -320,18 +311,13 @@ export default function ProfilePage() {
                   ))}
                   <label className="grid gap-2 text-xs font-semibold text-[#707a89] sm:col-span-2">
                     Email
-                    <input
-                      className={`${inputClass} bg-[#f8fafc] text-[#8a93a2]`}
-                      value={user?.email ?? ''}
-                      readOnly
-                    />
+                    <Input value={user?.email ?? ''} readOnly />
                   </label>
                   <label className="grid gap-2 text-xs font-semibold text-[#707a89] sm:col-span-2">
                     Bio
-                    <textarea
-                      className="min-h-28 resize-y rounded-lg border border-[#dfe5ee] bg-white px-3 py-3 text-sm text-slate-700 placeholder:text-[#9aa3b1] outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
+                    <Textarea
                       placeholder="Tell us a little about yourself"
-                      value={profile.bio}
+                      value={profile.bio ?? ''}
                       onChange={(event) =>
                         updateProfileField('bio', event.target.value)
                       }
@@ -438,7 +424,6 @@ export default function ProfilePage() {
                       id={field}
                       visibilityLabel={label}
                       required
-                      className={inputClass}
                       value={password[field]}
                       onChange={(event) =>
                         setPassword((current) => ({

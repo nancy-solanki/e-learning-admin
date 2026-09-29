@@ -218,14 +218,18 @@ test('user search, status and ordering are sent to the backend', async ({
       params.get('search') === 'Grace' && params.get('status') === 'suspended'
     );
   });
-  await page.getByLabel('Filter by status').selectOption('SA');
+  await page
+    .getByRole('button', { name: 'Filter by status', exact: true })
+    .click();
+  await page.getByRole('option', { name: 'Suspended', exact: true }).click();
   await statusRequest;
   await expect(page.getByText('No users match your filters.')).toBeVisible();
   const orderRequest = page.waitForRequest(
     (request) =>
       new URL(request.url()).searchParams.get('ordering') === '-created_at',
   );
-  await page.getByLabel('Sort users').selectOption('-created_at');
+  await page.getByRole('button', { name: 'Sort users', exact: true }).click();
+  await page.getByRole('option', { name: 'Newest first', exact: true }).click();
   await orderRequest;
 });
 test('user edit, status, privilege changes and delete persist in the table', async ({
@@ -265,8 +269,13 @@ test('user edit, status, privilege changes and delete persist in the table', asy
     page.getByText('User details updated successfully.'),
   ).toBeVisible();
   expect(current.first_name).toBe('Updated');
-  await page.getByLabel('Status for Grace Hopper').selectOption('SA');
-  await expect(page.getByLabel('Status for Grace Hopper')).toHaveValue('SA');
+  await page
+    .getByRole('button', { name: 'Status for Grace Hopper', exact: true })
+    .click();
+  await page.getByRole('option', { name: 'Suspended', exact: true }).click();
+  await expect(page.getByLabel('Status for Grace Hopper')).toHaveText(
+    'Suspended',
+  );
   await page.getByRole('button', { name: 'Make admin' }).click();
   await expect(
     page.getByRole('button', { name: 'Remove admin' }),
@@ -276,7 +285,9 @@ test('user edit, status, privilege changes and delete persist in the table', asy
     .getByRole('dialog')
     .getByRole('button', { name: 'Cancel', exact: true })
     .click();
-  await expect(page.getByRole('cell', { name: /Grace Hopper/ })).toBeVisible();
+  await expect(
+    page.getByRole('cell').filter({ hasText: 'Grace Hopper' }),
+  ).toBeVisible();
   const refetched = page.waitForResponse(
     (response) =>
       deleted &&
@@ -293,7 +304,9 @@ test('user edit, status, privilege changes and delete persist in the table', asy
   await expect(
     page.getByRole('heading', { name: 'No Users Found' }),
   ).toBeVisible();
-  await expect(page.getByRole('cell', { name: /Grace Hopper/ })).toHaveCount(0);
+  await expect(
+    page.getByRole('cell').filter({ hasText: 'Grace Hopper' }),
+  ).toHaveCount(0);
   await page.reload();
   await expect(
     page.getByRole('heading', { name: 'No Users Found' }),
@@ -479,9 +492,12 @@ test('status and deletion failures preserve the user', async ({ page }) => {
     route.fulfill({ status: 403, json: { detail: 'Deletion denied' } }),
   );
   await page.goto('/users');
-  await page.getByLabel('Status for Grace Hopper').selectOption('SA');
+  await page
+    .getByRole('button', { name: 'Status for Grace Hopper', exact: true })
+    .click();
+  await page.getByRole('option', { name: 'Suspended', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveText('Status denied');
-  await expect(page.getByLabel('Status for Grace Hopper')).toHaveValue('AC');
+  await expect(page.getByLabel('Status for Grace Hopper')).toHaveText('Active');
   await page.getByRole('button', { name: 'Delete', exact: true }).click();
   await page
     .getByRole('dialog')
@@ -494,7 +510,9 @@ test('status and deletion failures preserve the user', async ({ page }) => {
     .getByRole('dialog')
     .getByRole('button', { name: 'Cancel', exact: true })
     .click();
-  await expect(page.getByRole('cell', { name: /Grace Hopper/ })).toBeVisible();
+  await expect(
+    page.getByRole('cell').filter({ hasText: 'Grace Hopper' }),
+  ).toBeVisible();
 });
 test('cross-tab logout removes the protected view', async ({ page }) => {
   await session(page);
@@ -592,7 +610,9 @@ test('role filters and reset work with the new users layout', async ({
   await expect(page.getByText('Showing 2 of 2 users')).toBeVisible();
   await page.getByRole('button', { name: 'Admins', exact: true }).click();
   await expect(page.getByText('Showing 1 of 2 users')).toBeVisible();
-  await expect(page.getByRole('cell', { name: /Ada Lovelace/ })).toBeVisible();
+  await expect(
+    page.getByRole('cell').filter({ hasText: 'Ada Lovelace' }),
+  ).toBeVisible();
   await page.getByRole('button', { name: 'Instructors', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'No Users Found' }),
@@ -759,10 +779,15 @@ test('all account statuses display and filter consistently', async ({
     }),
   );
   await page.goto('/users');
-  for (const [index, status] of ['AC', 'PD', 'SA', 'NA'].entries())
+  for (const [index, status] of [
+    'Active',
+    'Pending',
+    'Suspended',
+    'Inactive',
+  ].entries())
     await expect(
       page.getByLabel(`Status for Member ${index + 1}`, { exact: true }),
-    ).toHaveValue(status);
+    ).toHaveText(status);
   await expect(page.getByLabel('Account status summary')).toContainText(
     'Active1',
   );
@@ -777,7 +802,10 @@ test('all account statuses display and filter consistently', async ({
       ],
     }),
   );
-  await page.getByLabel('Filter by status').selectOption('SA');
+  await page
+    .getByRole('button', { name: 'Filter by status', exact: true })
+    .click();
+  await page.getByRole('option', { name: 'Suspended', exact: true }).click();
   await expect(page.getByText('Showing 1 of 1 users')).toBeVisible();
   await expect(
     page.getByLabel('Status for Member 3', { exact: true }),

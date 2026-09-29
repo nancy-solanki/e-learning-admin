@@ -1,3 +1,4 @@
+import { Input } from './Input';
 import { EyeIcon, EyeOffIcon } from '../icons/AdminIcons';
 import { useState, type ComponentProps } from 'react';
 
@@ -13,7 +14,7 @@ export function PasswordInput({
   const [visible, setVisible] = useState(false);
   return (
     <span className="relative block">
-      <input
+      <Input
         {...props}
         type={visible ? 'text' : 'password'}
         className={`w-full pr-12 ${className}`}

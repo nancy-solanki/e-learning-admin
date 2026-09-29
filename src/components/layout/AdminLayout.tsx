@@ -1,3 +1,4 @@
+import { Avatar } from '../ui/Avatar';
 import { AccountDropdown } from '../ui/AccountDropdown';
 import { adminNavigation, instructorNavigation } from '../../config/navigation';
 import {
@@ -14,6 +15,7 @@ import {
   authEndpoints,
   clearTokens,
   getCurrentUser,
+  PROFILE_EVENT,
   readTokens,
 } from '../../lib/api';
 import { isAdmin } from '../../lib/permissions';
@@ -28,6 +30,14 @@ export default function AdminLayout() {
   const [loggingOut, setLoggingOut] = useState(false);
   useEffect(() => {
     let active = true;
+    const refreshProfile = () => {
+      void getCurrentUser()
+        .then((data) => {
+          if (active) setUser(data);
+        })
+        .catch(() => {});
+    };
+    window.addEventListener(PROFILE_EVENT, refreshProfile);
     getCurrentUser()
       .then((data) => {
         if (active) setUser(data);
@@ -38,6 +48,7 @@ export default function AdminLayout() {
       });
     return () => {
       active = false;
+      window.removeEventListener(PROFILE_EVENT, refreshProfile);
     };
   }, [location.pathname]);
   const logout = async () => {
@@ -67,11 +78,13 @@ export default function AdminLayout() {
       ? instructorNavigation
       : [];
   const pageTitle =
-    location.pathname === '/users'
-      ? 'Users management'
-      : location.pathname === '/profile'
-        ? 'My profile'
-        : 'Dashboard';
+    location.pathname === '/categories'
+      ? 'Category management'
+      : location.pathname === '/users'
+        ? 'Users management'
+        : location.pathname === '/profile'
+          ? 'My profile'
+          : 'Dashboard';
   const fullscreen = async () => {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
@@ -173,10 +186,7 @@ export default function AdminLayout() {
           )}
         </nav>
         <div className="flex shrink-0 items-center gap-3 border-t border-white/5 p-4">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#39364f] text-xs font-bold text-[#c4bcff]">
-            {user?.first_name?.[0] ?? 'A'}
-            {user?.last_name?.[0] ?? ''}
-          </div>
+          <Avatar user={user} className="h-9 w-9 text-xs" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-semibold text-white">
               {user?.username || user?.email || 'Your account'}

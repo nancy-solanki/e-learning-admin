@@ -1,3 +1,4 @@
+import { Input as TextInput } from './Input';
 import { useId } from 'react';
 import { PasswordInput } from './PasswordInput';
 import type {
@@ -26,7 +27,7 @@ export function FormField<T extends FieldValues>({
 }: FormFieldProps<T>) {
   const error = errors[name]?.message;
   const id = useId();
-  const Input = type === 'password' ? PasswordInput : 'input';
+  const Input = type === 'password' ? PasswordInput : TextInput;
 
   return (
     <div className="grid gap-2 text-sm font-bold text-slate-800">
@@ -38,9 +39,6 @@ export function FormField<T extends FieldValues>({
         placeholder={placeholder}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${id}-error` : undefined}
-        className={`h-[50px] rounded-lg border px-3.5 outline-none transition focus:border-brand focus:ring-4 focus:ring-brand/10 ${
-          error ? 'border-red-400' : 'border-[#d0d5df]'
-        }`}
       />
       {error && (
         <span

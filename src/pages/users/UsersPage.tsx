@@ -1,3 +1,5 @@
+import { Select } from '../../components/ui/Select';
+import { avatarUrl } from '../../lib/avatar';
 import { ConfirmationDialog } from '../../components/ui/ConfirmationDialog';
 import {
   TrashIcon,
@@ -7,7 +9,6 @@ import {
   BookIcon,
   StarIcon,
   SearchIcon,
-  ArrowDownIcon,
 } from '../../components/icons/AdminIcons';
 import { isAdmin } from '../../lib/permissions';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
@@ -463,39 +464,26 @@ export default function UsersPage() {
               className="w-full rounded-xl border border-[#e1e6f0] bg-[#f9fafc] py-2.5 pl-9 pr-3 text-xs outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
             />
           </div>
-          <select
-            aria-label="Sort users"
+          <Select
+            label="Sort users"
+            className="ui-select-compact"
             value={ordering ?? ''}
-            onChange={(event) =>
-              setOrdering(
-                (event.target.value ||
-                  undefined) as UserListFilters['ordering'],
-              )
+            onChange={(value) =>
+              setOrdering((value || undefined) as UserListFilters['ordering'])
             }
-            className="rounded-xl border border-[#e1e6f0] bg-[#f8f9fc] px-3 py-2.5 text-xs text-slate-600"
-          >
-            <option value="">Default order</option>
-            <option value="-created_at">Newest first</option>
-            <option value="created_at">Oldest first</option>
-          </select>
-          <div className="relative">
-            <select
-              aria-label="Filter by status"
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
-              className="appearance-none rounded-xl border border-[#e1e6f0] bg-[#f8f9fc] py-2.5 pl-3 pr-9 text-xs font-medium text-slate-600 outline-none transition hover:border-brand/40 focus:border-brand focus:ring-2 focus:ring-brand/10"
-            >
-              {statuses.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <ArrowDownIcon
-              aria-hidden="true"
-              className="pointer-events-none absolute right-3 top-3 h-3.5 w-3.5 text-slate-400"
-            />
-          </div>
+            options={[
+              { value: '', label: 'Default order' },
+              { value: '-created_at', label: 'Newest first' },
+              { value: 'created_at', label: 'Oldest first' },
+            ]}
+          />
+          <Select
+            label="Filter by status"
+            className="ui-select-compact"
+            value={status}
+            onChange={setStatus}
+            options={statuses}
+          />
         </div>
       </div>
       <div className="overflow-hidden rounded-[24px] border border-[#e8ebf4] bg-white shadow-[0_2px_3px_rgba(15,23,42,0.02)]">
@@ -647,9 +635,9 @@ export default function UsersPage() {
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
                             <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-[#eeeafd] font-semibold text-[#654ed1]">
-                              {user.avatar?.url ? (
+                              {avatarUrl(user.avatar) ? (
                                 <img
-                                  src={user.avatar.url}
+                                  src={avatarUrl(user.avatar)}
                                   alt=""
                                   className="h-full w-full object-cover"
                                 />
@@ -684,50 +672,34 @@ export default function UsersPage() {
                           </span>
                         </td>
                         <td className="px-5 py-4">
-                          <div className="relative inline-flex">
-                            <span
-                              aria-hidden="true"
-                              className={`pointer-events-none absolute left-3 top-1/2 z-10 h-1.5 w-1.5 -translate-y-1/2 rounded-full ${(statusStyles[currentStatus] ?? statusStyles.NA).dot}`}
-                            />
-                            <select
-                              aria-label={`Status for ${userName(user)}`}
-                              title={
-                                (statusStyles[currentStatus] ?? statusStyles.NA)
-                                  .description
-                              }
-                              disabled={busy}
-                              value={currentStatus}
-                              onChange={(event) =>
-                                void changeStatus(user, event.target.value)
-                              }
-                              className={`min-w-[125px] appearance-none rounded-full border py-2 pl-7 pr-8 text-xs font-semibold shadow-[0_1px_2px_rgba(15,23,42,0.03)] outline-none transition hover:brightness-[0.98] focus:ring-2 focus:ring-brand/20 focus:ring-offset-2 disabled:cursor-wait disabled:opacity-60 ${(statusStyles[currentStatus] ?? statusStyles.NA).surface}`}
-                            >
-                              {!statusStyles[currentStatus] && (
-                                <option value={currentStatus}>Unknown</option>
-                              )}
-                              {statuses.slice(1).map((option) => (
-                                <option
-                                  key={option.value}
-                                  value={option.value}
-                                  className="bg-white text-slate-700"
-                                >
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                            {workingId === user.id ? (
+                          <Select
+                            label={`Status for ${userName(user)}`}
+                            title={
+                              (statusStyles[currentStatus] ?? statusStyles.NA)
+                                .description
+                            }
+                            className="ui-select-compact ui-select-status"
+                            disabled={busy}
+                            value={currentStatus}
+                            onChange={(value) => void changeStatus(user, value)}
+                            leading={
                               <span
-                                aria-label="Updating user"
-                                role="status"
-                                className="pointer-events-none absolute right-3 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-current border-t-transparent text-slate-400 motion-safe:animate-spin"
-                              />
-                            ) : (
-                              <ArrowDownIcon
                                 aria-hidden="true"
-                                className="pointer-events-none absolute right-3 top-1/2 h-3 w-3 -translate-y-1/2 opacity-50"
+                                className={`h-1.5 w-1.5 shrink-0 rounded-full ${(statusStyles[currentStatus] ?? statusStyles.NA).dot}`}
                               />
-                            )}
-                          </div>
+                            }
+                            options={[
+                              ...(!statusStyles[currentStatus]
+                                ? [{ value: currentStatus, label: 'Unknown' }]
+                                : []),
+                              ...statuses.slice(1),
+                            ]}
+                          />
+                          {workingId === user.id && (
+                            <span role="status" className="sr-only">
+                              Updating user
+                            </span>
+                          )}
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex justify-end gap-2">

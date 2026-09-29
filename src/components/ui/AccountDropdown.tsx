@@ -1,3 +1,4 @@
+import { Avatar } from './Avatar';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import type { User } from '../../types/auth';
@@ -51,17 +52,7 @@ export function AccountDropdown({
         }}
         className="flex items-center gap-2.5 rounded-xl p-1.5 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-brand"
       >
-        <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-[#efebff] text-xs font-bold text-brand">
-          {user?.avatar?.url ? (
-            <img
-              src={user.avatar.url}
-              alt=""
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            `${user?.first_name?.[0] ?? 'A'}${user?.last_name?.[0] ?? ''}`
-          )}
-        </span>
+        <Avatar user={user} className="h-9 w-9 text-xs" />
         <span className="hidden max-w-40 truncate text-xs font-semibold text-slate-700 sm:block">
           {user?.username || user?.email || 'My account'}
         </span>

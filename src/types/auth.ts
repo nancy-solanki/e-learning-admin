@@ -54,7 +54,7 @@ export interface User {
   full_name: string;
   username: string;
   phone_number: string;
-  avatar: { id: string; url: string; name: string } | null;
+  avatar: string | { id: string; url: string; name: string } | null;
   birth_date: string | null;
   gender: 'MALE' | 'FEMALE' | string;
   email_notifications: boolean;

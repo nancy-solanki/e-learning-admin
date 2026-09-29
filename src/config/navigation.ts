@@ -31,7 +31,7 @@ export const mainNavigation: NavigationItem[] = [
 
 export const adminNavigation: NavigationItem[] = [
   { label: 'Users', icon: UsersIcon, path: '/users' },
-  { label: 'Category', icon: CategoryIcon },
+  { label: 'Category', icon: CategoryIcon, path: '/categories' },
   {
     label: 'Courses',
     icon: BookIcon,

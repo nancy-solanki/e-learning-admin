@@ -199,8 +199,10 @@ export function getCurrentUser(
   return currentUserRequest;
 }
 
+export const PROFILE_EVENT = 'learninfy:profile';
 export function setCurrentUser(user: User) {
   currentUser = user;
+  window.dispatchEvent(new Event(PROFILE_EVENT));
 }
 
 export function getSessionVersion() {

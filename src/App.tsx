@@ -23,6 +23,7 @@ import HomePage from './pages/dashboard/HomePage';
 import AdminLayout from './components/layout/AdminLayout';
 import ProfilePage from './pages/profile/ProfilePage';
 import UsersPage from './pages/users/UsersPage';
+import CategoriesPage from './pages/categories/CategoriesPage';
 import './styles.css';
 
 function subscribeAuth(callback: () => void) {
@@ -105,7 +106,8 @@ function PublicRoute() {
   const location = useLocation();
   const from: unknown = location.state?.from;
   const destination =
-    typeof from === 'string' && /^\/(?:users|profile)(?:\?|$)/.test(from)
+    typeof from === 'string' &&
+    /^\/(?:users|profile|categories)(?:\?|$)/.test(from)
       ? from
       : '/';
   return session !== null ? <Navigate to={destination} replace /> : <Outlet />;
@@ -143,6 +145,7 @@ export default function App() {
             <Route path="profile" element={<ProfilePage />} />
             <Route element={<AdminRoute />}>
               <Route path="users" element={<UsersPage />} />
+              <Route path="categories" element={<CategoriesPage />} />
             </Route>
           </Route>
         </Route>

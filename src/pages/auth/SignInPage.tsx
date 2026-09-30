@@ -1,3 +1,4 @@
+import { signIn } from '../../api/services/auth';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -6,16 +7,9 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthLayout } from '../../components/layout/AuthLayout';
 import { FormField } from '../../components/ui/FormField';
 import { FormNotice, type Notice } from '../../components/ui/FormNotice';
-import {
-  api,
-  apiErrorMessage,
-  authEndpoints,
-  getCurrentUser,
-  saveTokens,
-  clearTokens,
-  notifyAuthChange,
-  type Tokens,
-} from '../../lib/api';
+import { apiErrorMessage } from '../../api/errors';
+import { getCurrentUser } from '../../state/profile';
+import { saveTokens, clearTokens, notifyAuthChange } from '../../state/session';
 import { applyServerErrors } from '../../lib/form';
 import { signInSchema, type SignInValues } from '../../lib/validation';
 
@@ -24,7 +18,8 @@ export default function SignInPage() {
   const location = useLocation();
   const from: unknown = location.state?.from;
   const destination =
-    typeof from === 'string' && /^\/(?:users|profile)(?:\?|$)/.test(from)
+    typeof from === 'string' &&
+    /^\/(?:users|profile|categories)(?:\?|$)/.test(from)
       ? from
       : '/';
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -42,7 +37,7 @@ export default function SignInPage() {
     setNotice(null);
 
     try {
-      const { data } = await api.post<Tokens>(authEndpoints.signIn, values);
+      const data = await signIn(values);
       saveTokens(data);
       await getCurrentUser({ force: true });
       notifyAuthChange();

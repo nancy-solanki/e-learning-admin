@@ -1,3 +1,4 @@
+import { sendResetPasswordEmail } from '../../api/services/auth';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -6,7 +7,7 @@ import { Link } from 'react-router-dom';
 import { AuthLayout } from '../../components/layout/AuthLayout';
 import { FormField } from '../../components/ui/FormField';
 import { FormNotice, type Notice } from '../../components/ui/FormNotice';
-import { api, apiErrorMessage, authEndpoints } from '../../lib/api';
+import { apiErrorMessage } from '../../api/errors';
 import { applyServerErrors } from '../../lib/form';
 import {
   forgotPasswordSchema,
@@ -29,10 +30,7 @@ export default function ForgotPasswordPage() {
     setNotice(null);
 
     try {
-      const { data } = await api.post<{ message: string }>(
-        authEndpoints.sendResetPasswordEmail,
-        values,
-      );
+      const data = await sendResetPasswordEmail(values);
       setNotice({ type: 'success', text: data.message });
     } catch (error) {
       applyServerErrors<ForgotPasswordValues>(error, setError);

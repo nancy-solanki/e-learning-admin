@@ -1,10 +1,24 @@
+import { queryClient, queryKeys } from '../../src/state/queryClient';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import axios, {
   AxiosError,
   AxiosHeaders,
   type InternalAxiosRequestConfig,
 } from 'axios';
-import * as client from '../../src/lib/api';
+import { api } from '../../src/api/axios';
+import * as session from '../../src/state/session';
+import * as profile from '../../src/state/profile';
+import * as users from '../../src/api/services/users';
+import * as endpoints from '../../src/api/endpoints';
+import * as errors from '../../src/api/errors';
+const client = {
+  api,
+  ...session,
+  ...users,
+  ...profile,
+  ...endpoints,
+  ...errors,
+};
 import { isAdmin } from '../../src/lib/permissions';
 import {
   signInSchema,
@@ -384,3 +398,30 @@ it.each([undefined, 503])(
     expect(client.readTokens()).toEqual(tokens);
   },
 );
+
+describe('shared server-state isolation', () => {
+  it('clears profile, users, and categories on logout', () => {
+    client.setCurrentUser(user);
+    queryClient.setQueryData([...queryKeys.users, { search: '' }], [user]);
+    queryClient.setQueryData([...queryKeys.categories, 'list', { page: 1 }], {
+      results: [{ id: 'private' }],
+    });
+    client.clearTokens();
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
+  });
+  it('does not restore an old profile when a write finishes after an account change', async () => {
+    let finish!: () => void;
+    client.api.defaults.adapter = (config) =>
+      new Promise((resolve) => {
+        finish = () => resolve(response(user, config));
+      });
+    const pending = client.updateCurrentUser({ first_name: 'Old account' });
+    await vi.waitFor(() => expect(finish).toBeDefined());
+    session.clearSessionCache();
+    const nextUser = { ...user, id: 'next-account' };
+    client.setCurrentUser(nextUser);
+    finish();
+    await pending;
+    expect(queryClient.getQueryData(queryKeys.profile)).toEqual(nextUser);
+  });
+});

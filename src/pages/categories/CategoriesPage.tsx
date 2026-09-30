@@ -8,15 +8,13 @@ import {
   CloseIcon,
 } from '../../components/icons/AdminIcons';
 import { ConfirmationDialog } from '../../components/ui/ConfirmationDialog';
-import { apiErrorMessage, apiFieldErrors } from '../../lib/api';
+import { apiErrorMessage, apiFieldErrors } from '../../api/errors';
+import type { Category } from '../../api/services/categories';
 import {
-  deleteCategory,
+  useCategories,
+  useCategoryActions,
   getCategory,
-  listCategories,
-  saveCategory,
-  type Category,
-  type CategoryPage,
-} from '../../lib/categories';
+} from '../../state/categories';
 import './categories.css';
 
 function Thumbnail({ category }: { category: Category }) {
@@ -37,6 +35,7 @@ function CategoryEditor({
   onClose: () => void;
   onSaved: (category: Category) => void;
 }) {
+  const { saveCategory } = useCategoryActions();
   const dialog = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(category?.title ?? '');
@@ -282,10 +281,20 @@ export default function CategoriesPage() {
   const [query, setQuery] = useState('');
   const [ordering, setOrdering] = useState('-created_at');
   const [page, setPage] = useState(1);
-  const [data, setData] = useState<CategoryPage | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [revision, setRevision] = useState(0);
+  const categoriesQuery = useCategories({
+    search: query,
+    ordering,
+    page,
+    page_size: 9,
+  });
+  const { data, isFetching: loading } = categoriesQuery;
+  const error = categoriesQuery.isError
+    ? apiErrorMessage(
+        categoriesQuery.error,
+        'Unable to load categories. Please try again.',
+      )
+    : '';
+  const { deleteCategory } = useCategoryActions();
   const [editor, setEditor] = useState<{ category: Category | null } | null>(
     null,
   );
@@ -301,35 +310,6 @@ export default function CategoriesPage() {
     }, 300);
     return () => clearTimeout(timer);
   }, [search]);
-  useEffect(() => {
-    const controller = new AbortController();
-    Promise.resolve()
-      .then(() => {
-        if (controller.signal.aborted) return;
-        setLoading(true);
-        setError('');
-        return listCategories(
-          { search: query, ordering, page, page_size: 9 },
-          controller.signal,
-        );
-      })
-      .then((result) => {
-        if (!controller.signal.aborted && result) setData(result);
-      })
-      .catch((failure) => {
-        if (!controller.signal.aborted)
-          setError(
-            apiErrorMessage(
-              failure,
-              'Unable to load categories. Please try again.',
-            ),
-          );
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [query, ordering, page, revision]);
   async function edit(category: Category) {
     setOpening(category.id);
     setNotice('');
@@ -355,7 +335,6 @@ export default function CategoriesPage() {
       setNotice(`“${deleting.title}” was deleted.`);
       setDeleting(null);
       if (data?.results.length === 1 && page > 1) setPage(page - 1);
-      else setRevision((v) => v + 1);
     } catch (failure) {
       setDeleteError(
         apiErrorMessage(
@@ -473,7 +452,7 @@ export default function CategoriesPage() {
           <p>{error}</p>
           <button
             className="category-secondary"
-            onClick={() => setRevision((v) => v + 1)}
+            onClick={() => void categoriesQuery.refetch()}
           >
             Try again
           </button>
@@ -585,7 +564,6 @@ export default function CategoriesPage() {
               `“${saved.title}” was ${editor.category ? 'updated' : 'created'} successfully.`,
             );
             setEditor(null);
-            setRevision((v) => v + 1);
           }}
         />
       )}

@@ -1,16 +1,16 @@
+import { changePassword as submitPasswordChange } from '../../api/services/auth';
 import { Input, Textarea } from '../../components/ui/Input';
 import { Avatar } from '../../components/ui/Avatar';
 import { PasswordInput } from '../../components/ui/PasswordInput';
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 
+import { apiErrorMessage } from '../../api/errors';
 import {
-  api,
-  apiErrorMessage,
-  authEndpoints,
   getCurrentUser,
+  useCurrentUser,
   updateCurrentUser,
   uploadUserAvatar,
-} from '../../lib/api';
+} from '../../state/profile';
 import type { User } from '../../types/auth';
 
 type ProfileFields = Pick<
@@ -44,7 +44,8 @@ const settingsSections = [
 export default function ProfilePage() {
   const [activeSection, setActiveSection] =
     useState<(typeof settingsSections)[number]>('Edit Profile');
-  const [user, setUser] = useState<User | null>(null);
+  const { data: currentUser } = useCurrentUser();
+  const user = currentUser ?? null;
   const [profile, setProfile] = useState<ProfileFields | null>(null);
   const [preferences, setPreferences] = useState<Preferences | null>(null);
   const [password, setPassword] = useState(emptyPassword);
@@ -57,7 +58,6 @@ export default function ProfilePage() {
   useEffect(() => {
     getCurrentUser()
       .then((data) => {
-        setUser(data);
         setProfile({
           first_name: data.first_name,
           last_name: data.last_name,
@@ -98,8 +98,7 @@ export default function ProfilePage() {
     setError(null);
     setSuccess(null);
     try {
-      const updated = await updateCurrentUser({ ...profile, ...preferences });
-      setUser(updated);
+      await updateCurrentUser({ ...profile, ...preferences });
       setSuccess('Profile details saved successfully.');
     } catch (requestError: unknown) {
       setError(apiErrorMessage(requestError, 'Unable to save your profile.'));
@@ -115,8 +114,7 @@ export default function ProfilePage() {
     setError(null);
     setSuccess(null);
     try {
-      const updated = await updateCurrentUser(preferences);
-      setUser(updated);
+      await updateCurrentUser(preferences);
       setSuccess('Notification preferences saved successfully.');
     } catch (requestError: unknown) {
       setError(
@@ -151,7 +149,7 @@ export default function ProfilePage() {
     }
     setSaving(true);
     try {
-      await api.post(authEndpoints.changePassword, password);
+      await submitPasswordChange(password);
       setPassword(emptyPassword);
       setSuccess('Password changed successfully.');
     } catch (requestError: unknown) {
@@ -178,7 +176,7 @@ export default function ProfilePage() {
     setError(null);
     setPreviewUrl(URL.createObjectURL(file));
     try {
-      setUser(await uploadUserAvatar(file));
+      await uploadUserAvatar(file);
       setPreviewUrl(null);
       setSuccess('Profile photo updated successfully.');
     } catch (requestError: unknown) {

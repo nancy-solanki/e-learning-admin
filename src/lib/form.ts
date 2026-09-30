@@ -1,6 +1,6 @@
 import type { FieldValues, Path, UseFormSetError } from 'react-hook-form';
 
-import { apiFieldErrors } from './api';
+import { apiFieldErrors } from '../api/errors';
 
 export function applyServerErrors<T extends FieldValues>(
   error: unknown,

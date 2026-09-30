@@ -1,3 +1,4 @@
+import { signOut } from '../../api/services/auth';
 import { Avatar } from '../ui/Avatar';
 import { AccountDropdown } from '../ui/AccountDropdown';
 import { adminNavigation, instructorNavigation } from '../../config/navigation';
@@ -7,50 +8,20 @@ import {
   FullscreenIcon,
   ArrowDownIcon,
 } from '../../components/icons/AdminIcons';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import {
-  api,
-  apiErrorMessage,
-  authEndpoints,
-  clearTokens,
-  getCurrentUser,
-  PROFILE_EVENT,
-  readTokens,
-} from '../../lib/api';
+import { clearTokens, readTokens } from '../../state/session';
+import { useCurrentUser } from '../../state/profile';
 import { isAdmin } from '../../lib/permissions';
-import type { User } from '../../types/auth';
 
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const { data: profile } = useCurrentUser();
+  const user = profile ?? null;
   const [error, setError] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
-  useEffect(() => {
-    let active = true;
-    const refreshProfile = () => {
-      void getCurrentUser()
-        .then((data) => {
-          if (active) setUser(data);
-        })
-        .catch(() => {});
-    };
-    window.addEventListener(PROFILE_EVENT, refreshProfile);
-    getCurrentUser()
-      .then((data) => {
-        if (active) setUser(data);
-      })
-      .catch((error) => {
-        if (active)
-          setError(apiErrorMessage(error, 'Unable to load your profile.'));
-      });
-    return () => {
-      active = false;
-      window.removeEventListener(PROFILE_EVENT, refreshProfile);
-    };
-  }, [location.pathname]);
   const logout = async () => {
     setLoggingOut(true);
     const tokens = readTokens();
@@ -58,12 +29,7 @@ export default function AdminLayout() {
     clearTokens();
     navigate('/auth/sign-in', { replace: true });
     try {
-      if (tokens)
-        await api.post(
-          authEndpoints.signOut,
-          { refresh_token: tokens.refresh },
-          { headers: { Authorization: `Bearer ${tokens.access}` } },
-        );
+      if (tokens) await signOut(tokens);
     } catch {
       /* Local logout has already completed. */
     }

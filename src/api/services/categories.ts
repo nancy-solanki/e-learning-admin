@@ -1,4 +1,5 @@
-import { api } from './api';
+import { api } from '../axios';
+import { ENDPOINTS } from '../endpoints';
 export type Category = {
   id: string;
   title: string;
@@ -14,8 +15,8 @@ export type CategoryPage = {
   previous: string | null;
   results: Category[];
 };
-const endpoint = '/api/v1/category/';
-const detail = (slug: string) => `${endpoint}${encodeURIComponent(slug)}/`;
+const endpoint = ENDPOINTS.CATEGORY.LIST;
+const detail = ENDPOINTS.CATEGORY.DETAIL;
 export async function listCategories(
   params: { search: string; ordering: string; page: number; page_size: number },
   signal?: AbortSignal,

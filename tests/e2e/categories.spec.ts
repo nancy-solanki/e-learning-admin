@@ -231,13 +231,11 @@ test('profile displays backend URL avatars and updates the shared avatar after u
   await expect
     .poll(() => photo.evaluate((image: HTMLImageElement) => image.naturalWidth))
     .toBeGreaterThan(0);
-  await page
-    .getByLabel('Change photo')
-    .setInputFiles({
-      name: 'avatar.png',
-      mimeType: 'image/png',
-      buffer: Buffer.from([137, 80, 78, 71]),
-    });
+  await page.getByLabel('Change photo').setInputFiles({
+    name: 'avatar.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from([137, 80, 78, 71]),
+  });
   await expect(photo).toHaveAttribute('src', /updated-avatar.svg$/);
   await expect(
     page.getByRole('button', { name: 'Account menu' }).locator('img'),

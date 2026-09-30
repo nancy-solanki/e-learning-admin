@@ -24,12 +24,13 @@ export const ENDPOINTS = {
   },
   COURSE: {
     LIST: '/api/v1/course/',
-    DETAIL: (slug: string) => `/api/v1/course/${slug}/`,
-    CATEGORY_COURSES: (slug: string) => `/api/v1/course/category/${slug}/`,
+    DETAIL: (slug: string) => `/api/v1/course/${encodeURIComponent(slug)}/`,
+    CATEGORY_COURSES: (slug: string) =>
+      `/api/v1/course/category/${encodeURIComponent(slug)}/`,
   },
   CATEGORY: {
     LIST: '/api/v1/category/',
-    DETAIL: (slug: string) => `/api/v1/category/${slug}/`,
+    DETAIL: (slug: string) => `/api/v1/category/${encodeURIComponent(slug)}/`,
   },
   ENROLL: {
     MANAGEMENT: '/api/v1/enroll/management/',
@@ -52,3 +53,20 @@ export const ENDPOINTS = {
     DETAIL: (id: string | number) => `/api/v1/bank/${id}/`,
   },
 } as const;
+
+export const authEndpoints = {
+  signIn: ENDPOINTS.AUTH.SIGN_IN,
+  signOut: ENDPOINTS.AUTH.SIGN_OUT,
+  refresh: ENDPOINTS.AUTH.REFRESH,
+  sendResetPasswordEmail: ENDPOINTS.AUTH.SEND_RESET_PASSWORD_EMAIL,
+  activateAccount: '/api/v1/auth/activate-account/',
+  resetPassword: '/api/v1/auth/reset-password/',
+  changePassword: ENDPOINTS.AUTH.CHANGE_PASSWORD,
+};
+export const userEndpoints = {
+  me: ENDPOINTS.USER.ME,
+  list: ENDPOINTS.USER.LIST,
+  detail: ENDPOINTS.USER.DETAIL,
+  modifyAdminPrivileges: ENDPOINTS.USER.MODIFY_ADMIN_PRIVILEGES,
+  modifyStatus: ENDPOINTS.USER.MODIFY_USER_STATUS,
+};

@@ -7,7 +7,7 @@ Copy `.env.example` to `.env`. Set `VITE_API_ROOT_URL` to the API origin
 (for example, `http://localhost:8000`), without `/api/v1/auth`.
 Leave it empty when the API is served on the same origin. Vite embeds this
 setting at build time; production must use the appropriate HTTPS origin.
-Endpoint paths live in `src/config/endpoints.ts`.
+Endpoint paths live in `src/api/endpoints/index.ts`.
 
 Run `yarn dev` for development. Build with `yarn build`; serve `dist/`
 with a static host that falls back to `index.html` for frontend routes and
@@ -70,3 +70,16 @@ The deployed static server must serve `index.html` for frontend deep links
 such as `/profile` and `/users`. Requests under `/api/` must go to the backend,
 not the SPA fallback. The Vite preview-based browser tests verify frontend
 navigation and reloads; they do not configure the production web server.
+
+## API and shared state
+
+- `src/api/endpoints/`: endpoint paths and URL builders. Add new routes here.
+- `src/api/services/`: typed HTTP functions grouped by domain (`auth`, `users`, `categories`). Pages never call Axios directly.
+- `src/api/axios.ts`: Axios configuration, bearer-token interceptor, shared token refresh, and retry handling only.
+- `src/api/errors.ts`: shared API error parsing.
+- `src/state/queryClient.ts`: application-wide TanStack Query client and cache keys, provided in `src/main.tsx`.
+- `src/state/users.ts` and `src/state/categories.ts`: query and mutation hooks. Filters/pagination are part of query keys; successful writes invalidate the relevant lists.
+- `src/state/profile.ts`: shared profile query and cache updates after profile/avatar writes.
+- `src/state/session.ts`: token storage and session lifecycle. Logout/account changes clear all cached server data; late responses cannot restore a previous profile.
+
+Queries use a 30-second freshness window (the profile is cached until explicitly refreshed or updated). Automatic retries and window-focus refetching are disabled; existing retry buttons remain available. Form drafts, selection, and modal visibility remain local React state. Token-refresh behavior and the existing UI are unchanged.

@@ -13,15 +13,9 @@ import {
 import { isAdmin } from '../../lib/permissions';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
-import {
-  type UserListFilters,
-  apiErrorMessage,
-  deleteUser,
-  listUsers,
-  updateUser,
-  updateUserAdminPrivileges,
-  updateUserStatus,
-} from '../../lib/api';
+import type { UserListFilters } from '../../api/services/users';
+import { useUsers, useUserActions } from '../../state/users';
+import { apiErrorMessage } from '../../api/errors';
 import type { User } from '../../types/auth';
 import type { Notice } from '../../components/ui/FormNotice';
 
@@ -126,16 +120,14 @@ function userRole(user: User) {
   return 'Students';
 }
 
+const emptyUsers: User[] = [];
+
 export default function UsersPage() {
   const dialogRef = useRef<HTMLDivElement>(null);
-  const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState('');
   const [ordering, setOrdering] = useState<UserListFilters['ordering']>();
   const [roleFilter, setRoleFilter] = useState('All Users');
-  const [loadAttempt, setLoadAttempt] = useState(0);
-  const [loadFailed, setLoadFailed] = useState(false);
   const [status, setStatus] = useState('ALL');
-  const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
@@ -145,57 +137,44 @@ export default function UsersPage() {
   const [saving, setSaving] = useState(false);
   const [workingId, setWorkingId] = useState<string | null>(null);
 
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   useEffect(() => {
-    let active = true;
-    const controller = new AbortController();
-    const timer = window.setTimeout(
-      () => {
-        setLoading(true);
-        setLoadFailed(false);
-        setNotice((current) => (current?.type === 'error' ? null : current));
-        listUsers(
-          {
-            search: search.trim(),
-            status: (
-              {
-                AC: 'active',
-                PD: 'pending',
-                SA: 'suspended',
-                NA: 'inactive',
-              } as Record<string, UserListFilters['status']>
-            )[status],
-            ordering,
-          },
-          controller.signal,
-        )
-          .then((response) => {
-            if (active) setUsers(response);
-          })
-          .catch((error: unknown) => {
-            if (active) {
-              setUsers([]);
-              setLoadFailed(true);
-              setNotice({
-                type: 'error',
-                text: apiErrorMessage(
-                  error,
-                  'Unable to load users. Please try again.',
-                ),
-              });
-            }
-          })
-          .finally(() => {
-            if (active) setLoading(false);
-          });
-      },
+    const timer = setTimeout(
+      () => setDebouncedSearch(search.trim()),
       search.trim() ? 300 : 0,
     );
-    return () => {
-      active = false;
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [loadAttempt, search, status, ordering]);
+    return () => clearTimeout(timer);
+  }, [search]);
+  const usersQuery = useUsers({
+    search: debouncedSearch,
+    ordering,
+    status: (
+      {
+        AC: 'active',
+        PD: 'pending',
+        SA: 'suspended',
+        NA: 'inactive',
+      } as Record<string, UserListFilters['status']>
+    )[status],
+  });
+  const users = usersQuery.data ?? emptyUsers;
+  const loading = usersQuery.isFetching;
+  const loadFailed = usersQuery.isError;
+  const loadNotice: Notice | null = loadFailed
+    ? {
+        type: 'error',
+        text: apiErrorMessage(
+          usersQuery.error,
+          'Unable to load users. Please try again.',
+        ),
+      }
+    : null;
+  const {
+    updateUser,
+    updateUserStatus,
+    updateUserAdminPrivileges,
+    deleteUser,
+  } = useUserActions();
 
   useEffect(() => {
     if (!selectedUser) return;
@@ -258,18 +237,12 @@ export default function UsersPage() {
     setSaving(true);
     setNotice(null);
     try {
-      const updated = await updateUser(selectedUser.id, draft);
-      setUsers((current) =>
-        current.map((user) =>
-          user.id === updated.id ? { ...user, ...updated } : user,
-        ),
-      );
+      await updateUser(selectedUser.id, draft);
       setSelectedUser(null);
       setNotice({
         type: 'success',
         text: 'User details updated successfully.',
       });
-      setLoadAttempt((value) => value + 1);
     } catch (error: unknown) {
       setNotice({
         type: 'error',
@@ -284,15 +257,7 @@ export default function UsersPage() {
     setWorkingId(user.id);
     setNotice(null);
     try {
-      const updated = await updateUserStatus(user.id, nextStatus);
-      setUsers((current) =>
-        current.map((item) =>
-          item.id === user.id
-            ? { ...item, ...updated, status: updated.status ?? nextStatus }
-            : item,
-        ),
-      );
-      setLoadAttempt((value) => value + 1);
+      await updateUserStatus(user.id, nextStatus);
     } catch (error: unknown) {
       setNotice({
         type: 'error',
@@ -307,13 +272,7 @@ export default function UsersPage() {
     setWorkingId(user.id);
     setNotice(null);
     try {
-      const updated = await updateUserAdminPrivileges(user.id, !isAdmin(user));
-      setUsers((current) =>
-        current.map((item) =>
-          item.id === user.id ? { ...item, ...updated } : item,
-        ),
-      );
-      setLoadAttempt((value) => value + 1);
+      await updateUserAdminPrivileges(user.id, !isAdmin(user));
     } catch (error: unknown) {
       setNotice({
         type: 'error',
@@ -334,9 +293,7 @@ export default function UsersPage() {
     try {
       await deleteUser(user.id);
       setDeleteTarget(null);
-      setUsers((current) => current.filter((item) => item.id !== user.id));
       setNotice({ type: 'success', text: 'User deleted successfully.' });
-      setLoadAttempt((value) => value + 1);
     } catch (error: unknown) {
       setDeleteError(
         apiErrorMessage(error, 'Unable to delete this user. Please try again.'),
@@ -363,7 +320,7 @@ export default function UsersPage() {
           information up to date.
         </p>
       </div>
-      <UserNotice notice={selectedUser ? null : notice} />
+      <UserNotice notice={selectedUser ? null : (loadNotice ?? notice)} />
       <div className="my-8 grid grid-cols-2 gap-4 xl:grid-cols-4">
         {[
           {
@@ -565,10 +522,8 @@ export default function UsersPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setLoadFailed(false);
-                  setLoading(true);
                   setNotice(null);
-                  setLoadAttempt((value) => value + 1);
+                  void usersQuery.refetch();
                 }}
                 className="mt-6 rounded-xl bg-brand px-5 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
               >

@@ -10,11 +10,11 @@ import {
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import {
   AUTH_EVENT,
-  getCurrentUser,
   readTokens,
-  clearCurrentUser,
+  clearSessionCache as clearCurrentUser,
   getSessionVersion,
-} from './lib/api';
+} from './state/session';
+import { getCurrentUser } from './state/profile';
 import { isAdmin } from './lib/permissions';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';

@@ -10,6 +10,7 @@ import {
 } from '../state/session';
 type RetryConfig = AxiosRequestConfig & {
   _retry?: boolean;
+  skipAuthRetry?: boolean;
   _sessionVersion?: number;
 };
 export const api = axios.create({
@@ -40,6 +41,7 @@ api.interceptors.response.use(
     )
       return Promise.reject(error);
     if (
+      original?.skipAuthRetry ||
       error.response?.status !== 401 ||
       !original ||
       original._retry ||

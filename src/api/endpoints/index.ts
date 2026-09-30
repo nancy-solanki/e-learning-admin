@@ -42,7 +42,8 @@ export const ENDPOINTS = {
   COUPON: {
     MANAGEMENT: '/api/v1/coupon/management/',
     DETAIL: (id: string | number) => `/api/v1/coupon/management/${id}/`,
-    VALIDATE: (code: string) => `/api/v1/coupon/validate/${code}/`,
+    VALIDATE: (code: string) =>
+      `/api/v1/coupon/validate/${encodeURIComponent(code)}/`,
   },
   WALLET: {
     RETRIEVE: '/api/v1/wallet/',

@@ -1,0 +1,11 @@
+{
+  "code": "LEARN20",
+  "course": "",
+  "coupon_type": "percentage",
+  "value": 20,
+  "limit": 100,
+  "is_unlimited": false,
+  "is_global": false,
+  "is_instructor_created": false,
+  "expired_at": null
+}

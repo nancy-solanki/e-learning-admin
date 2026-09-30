@@ -11,6 +11,9 @@ export function Select({
   className = '',
   leading,
   title,
+  id: controlId,
+  describedBy,
+  invalid,
 }: {
   label: string;
   value: string;
@@ -20,6 +23,9 @@ export function Select({
   className?: string;
   leading?: ReactNode;
   title?: string;
+  id?: string;
+  describedBy?: string;
+  invalid?: boolean;
 }) {
   const id = useId();
   const root = useRef<HTMLDivElement>(null);
@@ -81,6 +87,9 @@ export function Select({
     >
       <button
         ref={trigger}
+        id={controlId}
+        aria-describedby={describedBy}
+        aria-invalid={invalid}
         type="button"
         className="ui-select-trigger ui-input"
         disabled={disabled}

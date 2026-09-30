@@ -337,18 +337,21 @@ test('profile and preferences save; password confirmation prevents invalid submi
   await page.route('**/api/v1/users/me/', (route) => {
     if (route.request().method() === 'PUT')
       saved = route.request().postDataJSON();
-    return route.fulfill({ json: { ...admin, ...saved } });
+    return route.fulfill({
+      json: { ...admin, first_name: undefined, last_name: undefined, ...saved },
+    });
   });
   await page.route('**/api/v1/auth/change-password/', (route) =>
     route.fulfill({ json: {} }),
   );
   await page.goto('/profile');
-  await page.getByLabel('First name').fill('Augusta');
+  await expect(page.getByLabel('Full name')).toHaveValue('Ada Lovelace');
+  await page.getByLabel('Full name').fill('Augusta');
   await page.getByRole('button', { name: 'Save changes' }).click();
   await expect(
     page.getByText('Profile details saved successfully.'),
   ).toBeVisible();
-  expect(saved.first_name).toBe('Augusta');
+  expect(saved.full_name).toBe('Augusta');
   await page
     .getByRole('button', { name: 'Notifications', exact: true })
     .click();
@@ -450,7 +453,7 @@ test('edit dialog traps keyboard focus, closes with Escape, and shows save error
 test('profile update and password failures are visible', async ({ page }) => {
   await session(page);
   await page.goto('/profile');
-  await expect(page.getByLabel('First name')).toBeVisible();
+  await expect(page.getByLabel('Full name')).toBeVisible();
   await page.route('**/api/v1/users/me/', (route) =>
     route.fulfill({ status: 500, json: { detail: 'Save unavailable' } }),
   );
@@ -517,7 +520,7 @@ test('status and deletion failures preserve the user', async ({ page }) => {
 test('cross-tab logout removes the protected view', async ({ page }) => {
   await session(page);
   await page.goto('/profile');
-  await expect(page.getByLabel('First name')).toBeVisible();
+  await expect(page.getByLabel('Full name')).toBeVisible();
   await page.evaluate(() => {
     localStorage.removeItem('learninfy.auth');
     window.dispatchEvent(
@@ -691,7 +694,7 @@ test('account dropdown supports keyboard navigation and SPA profile routing', as
   await trigger.click();
   await page.getByRole('menuitem', { name: 'Profile' }).click();
   await expect(page).toHaveURL(/\/profile$/);
-  await expect(page.getByLabel('First name')).toBeVisible();
+  await expect(page.getByLabel('Full name')).toBeVisible();
   expect(
     await page.evaluate(
       () => (window as unknown as { spaMarker: string }).spaMarker,
@@ -699,7 +702,7 @@ test('account dropdown supports keyboard navigation and SPA profile routing', as
   ).toBe('same-document');
   await expect(trigger).toHaveAttribute('aria-expanded', 'false');
   await page.reload();
-  await expect(page.getByLabel('First name')).toBeVisible();
+  await expect(page.getByLabel('Full name')).toBeVisible();
 });
 
 test('sign-in returns to the requested protected page', async ({ page }) => {
@@ -715,7 +718,7 @@ test('sign-in returns to the requested protected page', async ({ page }) => {
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page).toHaveURL(/\/profile$/);
-  await expect(page.getByLabel('First name')).toBeVisible();
+  await expect(page.getByLabel('Full name')).toBeVisible();
 });
 
 test('expired access refreshes and restores a deep link', async ({ page }) => {
@@ -731,7 +734,7 @@ test('expired access refreshes and restores a deep link', async ({ page }) => {
     return route.fulfill({ json: { access: 'fresh', refresh: 'rotated' } });
   });
   await page.goto('/profile');
-  await expect(page.getByLabel('First name')).toBeVisible();
+  await expect(page.getByLabel('Full name')).toBeVisible();
   expect(refreshes).toBe(1);
   expect(
     await page.evaluate(() =>
@@ -761,7 +764,7 @@ test('temporary refresh outage preserves the session and supports retry', async 
     route.fulfill({ json: { access: 'fresh' } }),
   );
   await page.getByRole('button', { name: 'Try again' }).click();
-  await expect(page.getByLabel('First name')).toBeVisible();
+  await expect(page.getByLabel('Full name')).toBeVisible();
 });
 
 test('all account statuses display and filter consistently', async ({
@@ -853,7 +856,7 @@ for (const path of ['/users', '/profile']) {
         page.getByRole('heading', { name: 'Users Management' }),
       ).toBeVisible();
     } else {
-      await expect(page.getByLabel('First name')).toHaveValue('Ada');
+      await expect(page.getByLabel('Full name')).toHaveValue('Ada Lovelace');
     }
     const otherTab = await context.newPage();
     await otherTab.goto('/auth/reset-password/uid/token');
@@ -872,7 +875,7 @@ for (const path of ['/users', '/profile']) {
         page.getByRole('heading', { name: 'Users Management' }),
       ).toHaveCount(0);
     } else {
-      await expect(page.getByLabel('First name')).toHaveValue('Grace');
+      await expect(page.getByLabel('Full name')).toHaveValue('Grace Hopper');
     }
     await expect(
       page.getByRole('link', { name: 'Users', exact: true }),

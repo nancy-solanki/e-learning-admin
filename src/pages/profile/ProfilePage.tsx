@@ -15,7 +15,7 @@ import type { User } from '../../types/auth';
 
 type ProfileFields = Pick<
   User,
-  'first_name' | 'last_name' | 'username' | 'phone_number' | 'language' | 'bio'
+  'full_name' | 'username' | 'phone_number' | 'language' | 'bio'
 >;
 type Preferences = Pick<
   User,
@@ -59,8 +59,7 @@ export default function ProfilePage() {
     getCurrentUser()
       .then((data) => {
         setProfile({
-          first_name: data.first_name,
-          last_name: data.last_name,
+          full_name: data.full_name,
           username: data.username,
           phone_number: data.phone_number,
           language: data.language,
@@ -287,8 +286,7 @@ export default function ProfilePage() {
                 <div className="grid gap-5 sm:grid-cols-2">
                   {(
                     [
-                      ['first_name', 'First name'],
-                      ['last_name', 'Last name'],
+                      ['full_name', 'Full name'],
                       ['username', 'Username'],
                       ['phone_number', 'Phone number'],
                       ['language', 'Language'],

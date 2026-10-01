@@ -21,7 +21,7 @@ type Icon = ComponentType<SVGProps<SVGSVGElement>>;
 export type NavigationItem = {
   label: string;
   icon: Icon;
-  submenu?: string[];
+  submenu?: (string | { label: string; path: string })[];
   path?: string;
 };
 
@@ -69,7 +69,11 @@ export const adminNavigation: NavigationItem[] = [
   {
     label: 'Site',
     icon: GlobeIcon,
-    submenu: ['Settings', 'Localizations', 'Pages'],
+    submenu: [
+      'Settings',
+      { label: 'Localizations', path: '/localizations' },
+      'Pages',
+    ],
   },
 ];
 

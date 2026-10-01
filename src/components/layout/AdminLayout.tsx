@@ -7,6 +7,7 @@ import {
   MenuIcon,
   FullscreenIcon,
   ArrowDownIcon,
+  GlobeIcon,
 } from '../../components/icons/AdminIcons';
 import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -48,11 +49,13 @@ export default function AdminLayout() {
       ? 'Coupon management'
       : location.pathname === '/categories'
         ? 'Category management'
-        : location.pathname === '/users'
-          ? 'Users management'
-          : location.pathname === '/profile'
-            ? 'My profile'
-            : 'Dashboard';
+        : location.pathname === '/localizations'
+          ? 'Localization management'
+          : location.pathname === '/users'
+            ? 'Users management'
+            : location.pathname === '/profile'
+              ? 'My profile'
+              : 'Dashboard';
   const fullscreen = async () => {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
@@ -103,6 +106,16 @@ export default function AdminLayout() {
             <HomeIcon className="h-[18px] w-[18px]" />
             Home
           </NavLink>
+          {!isAdmin(user) && (
+            <NavLink
+              to="/localizations"
+              className={linkClass}
+              onClick={() => setMenuOpen(false)}
+            >
+              <GlobeIcon className="h-[18px] w-[18px]" />
+              Localizations
+            </NavLink>
+          )}
           {navigation.length > 0 && (
             <p className="mb-2 mt-6 px-3 text-[10px] font-medium uppercase tracking-[0.14em] text-[#777e96]">
               Management
@@ -127,11 +140,24 @@ export default function AdminLayout() {
                   <ArrowDownIcon className="h-3.5 w-3.5 transition group-open:rotate-180" />
                 </summary>
                 <div className="ml-9 border-l border-white/10 pl-3 pb-2">
-                  {submenu.map((item) => (
-                    <div key={item} className="py-2 text-xs text-[#9299b1]">
-                      {item}
-                    </div>
-                  ))}
+                  {submenu.map((item) =>
+                    typeof item === 'string' ? (
+                      <div key={item} className="py-2 text-xs text-[#9299b1]">
+                        {item}
+                      </div>
+                    ) : (
+                      <NavLink
+                        key={item.path}
+                        to={item.path}
+                        className={({ isActive }) =>
+                          `block py-2 text-xs ${isActive ? 'font-semibold text-white' : 'text-[#9299b1] hover:text-white'}`
+                        }
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        {item.label}
+                      </NavLink>
+                    ),
+                  )}
                   <span className="mt-1 inline-block rounded bg-white/5 px-2 py-1 text-[10px] text-[#9299b1]">
                     Coming soon
                   </span>

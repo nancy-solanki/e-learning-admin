@@ -24,6 +24,7 @@ import AdminLayout from './components/layout/AdminLayout';
 import ProfilePage from './pages/profile/ProfilePage';
 import UsersPage from './pages/users/UsersPage';
 import CategoriesPage from './pages/categories/CategoriesPage';
+import LocalizationsPage from './pages/localizations/LocalizationsPage';
 import CouponsPage from './pages/coupons/CouponsPage';
 import './styles.css';
 
@@ -108,7 +109,7 @@ function PublicRoute() {
   const from: unknown = location.state?.from;
   const destination =
     typeof from === 'string' &&
-    /^\/(?:users|profile|categories|coupons)(?:\?|$)/.test(from)
+    /^\/(?:users|profile|categories|coupons|localizations)(?:\?|$)/.test(from)
       ? from
       : '/';
   return session !== null ? <Navigate to={destination} replace /> : <Outlet />;
@@ -149,6 +150,7 @@ export default function App() {
               <Route path="users" element={<UsersPage />} />
               <Route path="categories" element={<CategoriesPage />} />
             </Route>
+            <Route path="localizations" element={<LocalizationsPage />} />
           </Route>
         </Route>
 

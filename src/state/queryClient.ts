@@ -9,4 +9,5 @@ export const queryKeys = {
   profile: ['profile'] as const,
   users: ['users'] as const,
   categories: ['categories'] as const,
+  localizations: ['localizations'] as const,
 };

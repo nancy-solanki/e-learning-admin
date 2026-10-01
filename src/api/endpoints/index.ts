@@ -32,6 +32,10 @@ export const ENDPOINTS = {
     LIST: '/api/v1/category/',
     DETAIL: (slug: string) => `/api/v1/category/${encodeURIComponent(slug)}/`,
   },
+  LOCALIZATION: {
+    LIST: '/api/v1/localization/',
+    DETAIL: (id: string) => `/api/v1/localization/${encodeURIComponent(id)}/`,
+  },
   ENROLL: {
     MANAGEMENT: '/api/v1/enroll/management/',
   },

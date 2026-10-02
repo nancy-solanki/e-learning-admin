@@ -15,7 +15,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
 import type { UserListFilters } from '../../api/services/users';
 import { useUsers, useUserActions } from '../../state/users';
-import { apiErrorMessage } from '../../api/errors';
+import { apiErrorMessage, apiFieldErrors } from '../../api/errors';
 import type { User } from '../../types/auth';
 import type { Notice } from '../../components/ui/FormNotice';
 
@@ -129,12 +129,16 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState('All Users');
   const [status, setStatus] = useState('ALL');
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [inviteRole, setInviteRole] = useState('student');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [draft, setDraft] = useState(emptyDraft);
   const [saving, setSaving] = useState(false);
+  const [resendingId, setResendingId] = useState<string | null>(null);
   const [workingId, setWorkingId] = useState<string | null>(null);
 
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -170,6 +174,8 @@ export default function UsersPage() {
       }
     : null;
   const {
+    inviteUser,
+    resendUserInvitation,
     updateUser,
     updateUserStatus,
     updateUserAdminPrivileges,
@@ -177,13 +183,13 @@ export default function UsersPage() {
   } = useUserActions();
 
   useEffect(() => {
-    if (!selectedUser) return;
+    if (!selectedUser && !creating) return;
     const previous = document.activeElement as HTMLElement | null;
     const dialog = dialogRef.current;
     const controls = () =>
       Array.from(
         dialog?.querySelectorAll<HTMLElement>(
-          'button:not(:disabled), input:not(:disabled), textarea:not(:disabled)',
+          'button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled)',
         ) ?? [],
       );
     controls()[0]?.focus();
@@ -191,6 +197,7 @@ export default function UsersPage() {
       if (event.key === 'Escape' && !saving) {
         event.preventDefault();
         setSelectedUser(null);
+        setCreating(false);
       }
       if (event.key === 'Tab') {
         const elements = controls();
@@ -210,7 +217,7 @@ export default function UsersPage() {
       dialog?.removeEventListener('keydown', onKey);
       previous?.focus();
     };
-  }, [selectedUser, saving]);
+  }, [selectedUser, creating, saving]);
 
   const filteredUsers = useMemo(() => {
     return users.filter(
@@ -219,6 +226,8 @@ export default function UsersPage() {
   }, [users, roleFilter]);
 
   const openEditor = (user: User) => {
+    setCreating(false);
+    setFieldErrors({});
     setSelectedUser(user);
     setDraft({
       first_name: user.first_name ?? '',
@@ -233,23 +242,70 @@ export default function UsersPage() {
 
   const saveUser = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selectedUser) return;
+    if (!selectedUser && !creating) return;
+    if (saving) return;
     setSaving(true);
     setNotice(null);
+    setFieldErrors({});
     try {
-      await updateUser(selectedUser.id, draft);
+      let message = 'User details updated successfully.';
+      if (creating) {
+        const { email, username, first_name, last_name } = draft;
+        const result = await inviteUser({
+          email: email.trim(),
+          username: username.trim(),
+          first_name: first_name.trim(),
+          last_name: last_name.trim(),
+          role: inviteRole,
+        });
+        message = result.message;
+      } else if (selectedUser) {
+        await updateUser(selectedUser.id, draft);
+      }
+      setCreating(false);
       setSelectedUser(null);
       setNotice({
         type: 'success',
-        text: 'User details updated successfully.',
+        text: message,
       });
     } catch (error: unknown) {
       setNotice({
         type: 'error',
-        text: apiErrorMessage(error, 'Unable to update this user.'),
+        text: apiErrorMessage(
+          error,
+          creating
+            ? 'Unable to send the invitation. Please review the details and try again.'
+            : 'Unable to update this user.',
+        ),
       });
+      setFieldErrors(apiFieldErrors(error));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const resendInvitation = async (user: User) => {
+    if (workingId || userStatus(user) !== 'PD') return;
+    setWorkingId(user.id);
+    setResendingId(user.id);
+    setNotice(null);
+    try {
+      const result = await resendUserInvitation(user.id);
+      setNotice({
+        type: 'success',
+        text: result?.message || 'Invitation resent successfully.',
+      });
+    } catch (error: unknown) {
+      setNotice({
+        type: 'error',
+        text: apiErrorMessage(
+          error,
+          'Unable to resend the invitation. Please try again.',
+        ),
+      });
+    } finally {
+      setWorkingId(null);
+      setResendingId(null);
     }
   };
 
@@ -306,21 +362,38 @@ export default function UsersPage() {
 
   return (
     <section className="mx-auto w-full">
-      <div className="mb-9">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Users Management
-          </h1>
-          <span className="rounded-full border border-[#e4dfff] bg-[#efedff] px-3 py-1 text-[11px] font-semibold text-[#6c55ff]">
-            Admin Panel
-          </span>
+      <div className="mb-9 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              Users Management
+            </h1>
+            <span className="rounded-full border border-[#e4dfff] bg-[#efedff] px-3 py-1 text-[11px] font-semibold text-[#6c55ff]">
+              Admin Panel
+            </span>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-[#8792a8]">
+            Promote user roles, manage account status, and keep profile
+            information up to date.
+          </p>
         </div>
-        <p className="mt-2 text-sm leading-6 text-[#8792a8]">
-          Promote user roles, manage account status, and keep profile
-          information up to date.
-        </p>
+        <button
+          type="button"
+          onClick={() => {
+            setDraft(emptyDraft);
+            setInviteRole('student');
+            setFieldErrors({});
+            setNotice(null);
+            setCreating(true);
+          }}
+          className="category-primary ml-auto shrink-0"
+        >
+          <span aria-hidden="true">＋</span> Create user
+        </button>
       </div>
-      <UserNotice notice={selectedUser ? null : (loadNotice ?? notice)} />
+      <UserNotice
+        notice={selectedUser || creating ? null : (loadNotice ?? notice)}
+      />
       <div className="my-8 grid grid-cols-2 gap-4 xl:grid-cols-4">
         {[
           {
@@ -658,6 +731,18 @@ export default function UsersPage() {
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex justify-end gap-2">
+                            {currentStatus === 'PD' && (
+                              <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() => void resendInvitation(user)}
+                                className="whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#654ed1] hover:bg-[#f1efff] disabled:opacity-50"
+                              >
+                                {resendingId === user.id
+                                  ? 'Sending…'
+                                  : 'Resend invitation'}
+                              </button>
+                            )}
                             <button
                               type="button"
                               disabled={workingId !== null}
@@ -731,7 +816,7 @@ export default function UsersPage() {
           </div>
         </ConfirmationDialog>
       )}
-      {selectedUser ? (
+      {selectedUser || creating ? (
         <div
           className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/35 p-4"
           ref={dialogRef}
@@ -741,7 +826,7 @@ export default function UsersPage() {
         >
           <form
             onSubmit={(event) => void saveUser(event)}
-            className="w-full max-w-xl rounded-[24px] bg-white p-6 shadow-2xl"
+            className="w-full max-w-xl rounded-[24px] max-h-[90vh] overflow-y-auto bg-white p-6 shadow-2xl"
           >
             <div className="flex items-start justify-between">
               <div>
@@ -752,14 +837,21 @@ export default function UsersPage() {
                   id="edit-user-title"
                   className="mt-1 font-display text-2xl font-bold text-slate-900"
                 >
-                  Edit {userName(selectedUser)}
+                  {creating ? 'Create user' : `Edit ${userName(selectedUser!)}`}
                 </h2>
               </div>
               <button
                 type="button"
                 disabled={saving}
-                onClick={() => setSelectedUser(null)}
-                aria-label="Close edit user dialog"
+                onClick={() => {
+                  setSelectedUser(null);
+                  setCreating(false);
+                }}
+                aria-label={
+                  creating
+                    ? 'Close create user dialog'
+                    : 'Close edit user dialog'
+                }
                 className="text-2xl leading-none text-slate-400 hover:text-slate-700"
               >
                 ×
@@ -775,42 +867,97 @@ export default function UsersPage() {
                   'email',
                   'phone_number',
                 ] as const
-              ).map((field) => (
-                <label
-                  key={field}
-                  className="text-sm font-semibold text-slate-700"
-                >
-                  {field
-                    .replace('_', ' ')
-                    .replace(/^\w/, (letter) => letter.toUpperCase())}
-                  <input
-                    required={field !== 'phone_number'}
-                    type={field === 'email' ? 'email' : 'text'}
-                    value={draft[field]}
-                    onChange={(event) =>
-                      setDraft({ ...draft, [field]: event.target.value })
+              )
+                .filter((field) => !creating || field !== 'phone_number')
+                .map((field) => (
+                  <label
+                    key={field}
+                    className="text-sm font-semibold text-slate-700"
+                  >
+                    {field
+                      .replace('_', ' ')
+                      .replace(/^\w/, (letter) => letter.toUpperCase())}
+                    <input
+                      disabled={saving}
+                      aria-label={field
+                        .replace('_', ' ')
+                        .replace(/^\w/, (letter) => letter.toUpperCase())}
+                      aria-invalid={Boolean(fieldErrors[field])}
+                      aria-describedby={
+                        fieldErrors[field] ? `user-${field}-error` : undefined
+                      }
+                      required={field !== 'phone_number'}
+                      type={field === 'email' ? 'email' : 'text'}
+                      value={draft[field]}
+                      onChange={(event) =>
+                        setDraft({ ...draft, [field]: event.target.value })
+                      }
+                      className="mt-1.5 w-full rounded-xl border border-[#e4e7f0] px-3 py-2.5 font-normal outline-none focus:border-[#8c7bea] focus:ring-2 focus:ring-[#8c7bea]/15"
+                    />
+                    {fieldErrors[field] && (
+                      <span
+                        id={`user-${field}-error`}
+                        className="mt-1 block text-xs text-rose-600"
+                      >
+                        {fieldErrors[field]}
+                      </span>
+                    )}
+                  </label>
+                ))}
+              {creating ? (
+                <div className="text-sm font-semibold text-slate-700 sm:col-span-2">
+                  <label htmlFor="invite-user-role">Role</label>
+                  <Select
+                    id="invite-user-role"
+                    label="Role"
+                    value={inviteRole}
+                    disabled={saving}
+                    onChange={setInviteRole}
+                    invalid={Boolean(fieldErrors.role)}
+                    describedBy={
+                      fieldErrors.role ? 'user-role-error' : undefined
                     }
-                    className="mt-1.5 w-full rounded-xl border border-[#e4e7f0] px-3 py-2.5 font-normal outline-none focus:border-[#8c7bea] focus:ring-2 focus:ring-[#8c7bea]/15"
+                    className="mt-1.5 w-full font-normal"
+                    options={[
+                      { value: 'admin', label: 'Admin' },
+                      { value: 'instructor', label: 'Instructor' },
+                      { value: 'student', label: 'Student' },
+                    ]}
+                  />
+                  {fieldErrors.role && (
+                    <span
+                      id="user-role-error"
+                      className="mt-1 block text-xs text-rose-600"
+                    >
+                      {fieldErrors.role}
+                    </span>
+                  )}
+                  <span className="mt-2 block text-xs font-normal text-slate-500">
+                    An invitation email will be sent to activate the account.
+                  </span>
+                </div>
+              ) : (
+                <label className="text-sm font-semibold text-slate-700 sm:col-span-2">
+                  Bio
+                  <textarea
+                    value={draft.bio}
+                    onChange={(event) =>
+                      setDraft({ ...draft, bio: event.target.value })
+                    }
+                    rows={3}
+                    className="mt-1.5 w-full resize-none rounded-xl border border-[#e4e7f0] px-3 py-2.5 font-normal outline-none focus:border-[#8c7bea] focus:ring-2 focus:ring-[#8c7bea]/15"
                   />
                 </label>
-              ))}
-              <label className="text-sm font-semibold text-slate-700 sm:col-span-2">
-                Bio
-                <textarea
-                  value={draft.bio}
-                  onChange={(event) =>
-                    setDraft({ ...draft, bio: event.target.value })
-                  }
-                  rows={3}
-                  className="mt-1.5 w-full resize-none rounded-xl border border-[#e4e7f0] px-3 py-2.5 font-normal outline-none focus:border-[#8c7bea] focus:ring-2 focus:ring-[#8c7bea]/15"
-                />
-              </label>
+              )}
             </div>
             <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
                 disabled={saving}
-                onClick={() => setSelectedUser(null)}
+                onClick={() => {
+                  setSelectedUser(null);
+                  setCreating(false);
+                }}
                 className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-100"
               >
                 Cancel
@@ -820,7 +967,13 @@ export default function UsersPage() {
                 disabled={saving}
                 className="rounded-xl bg-[#5f48d8] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(95,72,216,0.22)] hover:bg-[#533cc4] disabled:opacity-60"
               >
-                {saving ? 'Saving…' : 'Save changes'}
+                {saving
+                  ? creating
+                    ? 'Sending invitation…'
+                    : 'Saving…'
+                  : creating
+                    ? 'Send invitation'
+                    : 'Save changes'}
               </button>
             </div>
           </form>

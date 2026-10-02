@@ -2,6 +2,9 @@ export const ENDPOINTS = {
   USER: {
     ME: '/api/v1/users/me/',
     LIST: '/api/v1/users/',
+    INVITE: '/api/v1/users/invite/',
+    RESEND_INVITE: (id: string) =>
+      `/api/v1/users/${encodeURIComponent(id)}/resend-invite/`,
     DETAIL: (id: string | number) => `/api/v1/users/${id}/`,
     MODIFY_ADMIN_PRIVILEGES: (id: string | number) =>
       `/api/v1/users/${id}/modify_admin_privileges/`,

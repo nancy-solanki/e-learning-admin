@@ -172,6 +172,29 @@ test('category sort supports keyboard navigation and updates server ordering', a
   await page.keyboard.press('Enter');
   await sorted;
   await expect(trigger).toHaveText('Title: Z–A');
+  const freshSort = page.waitForRequest(
+    (request) =>
+      new URL(request.url()).searchParams.get('ordering') === '-created_at',
+  );
+  await trigger.click();
+  await page.getByRole('option', { name: 'Newest first' }).click();
+  await freshSort;
+  const searched = page.waitForRequest(
+    (request) => new URL(request.url()).searchParams.get('search') === 'Design',
+  );
+  await page.getByLabel('Search categories').fill('Design');
+  await searched;
+  const cleared = page.waitForRequest((request) => {
+    const url = new URL(request.url());
+    return (
+      url.pathname === '/api/v1/category/' &&
+      url.searchParams.get('search') === ''
+    );
+  });
+  await page.getByLabel('Search categories').fill('');
+  await cleared;
+  await trigger.focus();
+
   await expect(trigger).toBeFocused();
   await trigger.click();
   await page.keyboard.press('Escape');

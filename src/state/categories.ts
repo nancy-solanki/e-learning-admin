@@ -7,6 +7,7 @@ export function useCategories(
   filters: Parameters<typeof categoriesApi.listCategories>[0],
 ) {
   return useQuery({
+    staleTime: 0,
     queryKey: [...queryKeys.categories, 'list', filters],
     queryFn: ({ signal }) => categoriesApi.listCategories(filters, signal),
   });

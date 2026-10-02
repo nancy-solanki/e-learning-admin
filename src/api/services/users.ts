@@ -58,7 +58,20 @@ export async function updateUser(
     ENDPOINTS.USER.DETAIL(id),
     data,
   );
-  return updatedUser;
+  return isUserRecord(updatedUser) ? updatedUser : getUser(id);
+}
+
+// Mutation endpoints may acknowledge success without returning the user.
+// Read only the affected account to reconcile its authoritative role/status.
+function isUserRecord(value: unknown): value is User {
+  if (!value || typeof value !== 'object') return false;
+  const user = value as Partial<User>;
+  return (
+    typeof user.id === 'string' &&
+    typeof user.email === 'string' &&
+    Array.isArray(user.role) &&
+    typeof user.username === 'string'
+  );
 }
 
 export async function deleteUser(id: string): Promise<void> {
@@ -72,7 +85,9 @@ export async function updateUserStatus(
   const { data } = await api.put<User>(userEndpoints.modifyStatus(id), {
     status,
   });
-  return data;
+  return isUserRecord(data) && typeof data.status === 'string'
+    ? data
+    : getUser(id);
 }
 
 export async function updateUserAdminPrivileges(
@@ -83,7 +98,7 @@ export async function updateUserAdminPrivileges(
     userEndpoints.modifyAdminPrivileges(id),
     { is_admin: isAdmin },
   );
-  return data;
+  return isUserRecord(data) ? data : getUser(id);
 }
 
 export async function updateCurrentUser(data: Partial<User>): Promise<User> {
@@ -102,4 +117,39 @@ export async function uploadUserAvatar(file: File): Promise<User> {
 
 export async function fetchCurrentUser(signal?: AbortSignal): Promise<User> {
   return (await api.get<User>(ENDPOINTS.USER.ME, { signal })).data;
+}
+
+export type InviteUserInput = {
+  email: string;
+  username: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+};
+
+export type InviteUserResponse = {
+  id: string;
+  email: string;
+  status: string;
+  message: string;
+};
+
+export async function inviteUser(
+  input: InviteUserInput,
+): Promise<InviteUserResponse> {
+  const { data } = await api.post<InviteUserResponse>(
+    ENDPOINTS.USER.INVITE,
+    input,
+  );
+  return data;
+}
+
+export async function resendUserInvitation(
+  id: string,
+): Promise<{ message?: string }> {
+  const { data } = await api.post<{ message?: string }>(
+    ENDPOINTS.USER.RESEND_INVITE(id),
+    {},
+  );
+  return data;
 }

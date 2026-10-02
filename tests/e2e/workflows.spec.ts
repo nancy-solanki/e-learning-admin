@@ -238,9 +238,11 @@ test('user edit, status, privilege changes and delete persist in the table', asy
   await session(page);
   let current = { ...learner };
   let deleted = false;
-  await page.route('**/api/v1/users/', (route) =>
-    route.fulfill({ json: deleted ? [] : [current] }),
-  );
+  let listRequests = 0;
+  await page.route('**/api/v1/users/', (route) => {
+    listRequests++;
+    return route.fulfill({ json: deleted ? [] : [current] });
+  });
   await page.route('**/api/v1/users/2/', (route) => {
     if (route.request().method() === 'DELETE') {
       deleted = true;
@@ -288,18 +290,11 @@ test('user edit, status, privilege changes and delete persist in the table', asy
   await expect(
     page.getByRole('cell').filter({ hasText: 'Grace Hopper' }),
   ).toBeVisible();
-  const refetched = page.waitForResponse(
-    (response) =>
-      deleted &&
-      new URL(response.url()).pathname === '/api/v1/users/' &&
-      response.request().method() === 'GET',
-  );
   await page.getByRole('button', { name: 'Delete', exact: true }).click();
   await page
     .getByRole('dialog')
     .getByRole('button', { name: 'Delete user', exact: true })
     .click();
-  await refetched;
   await expect(page.getByText('User deleted successfully.')).toBeVisible();
   await expect(
     page.getByRole('heading', { name: 'No Users Found' }),
@@ -307,6 +302,7 @@ test('user edit, status, privilege changes and delete persist in the table', asy
   await expect(
     page.getByRole('cell').filter({ hasText: 'Grace Hopper' }),
   ).toHaveCount(0);
+  expect(listRequests).toBe(1);
   await page.reload();
   await expect(
     page.getByRole('heading', { name: 'No Users Found' }),
@@ -952,3 +948,218 @@ test('delete confirmation supports keyboard cancellation and locks while pending
   await cancel.click();
   await expect(trigger).toBeFocused();
 });
+
+for (const role of ['admin', 'instructor', 'student']) {
+  test(`create user sends an invitation as ${role} and refreshes the directory`, async ({
+    page,
+  }) => {
+    await session(page);
+    let invited = false;
+    await page.route('**/api/v1/users/', (route) =>
+      route.fulfill({
+        json: invited ? [{ ...learner, status: 'PENDING' }] : [],
+      }),
+    );
+    await page.route('**/api/v1/users/invite/', (route) => {
+      expect(route.request().method()).toBe('POST');
+      expect(route.request().headers().authorization).toBe('Bearer access');
+      expect(route.request().postDataJSON()).toEqual({
+        email: learner.email,
+        username: 'grace',
+        first_name: 'Grace',
+        last_name: 'Hopper',
+        role,
+      });
+      invited = true;
+      return route.fulfill({
+        status: 201,
+        json: {
+          id: '2',
+          email: learner.email,
+          status: 'PENDING',
+          message: 'Invitation sent successfully',
+        },
+      });
+    });
+    await page.goto('/users');
+    await page
+      .getByRole('button', { name: 'Create user', exact: true })
+      .click();
+    const dialog = page.getByRole('dialog', {
+      name: 'Create user',
+      exact: true,
+    });
+    await dialog.getByLabel('First name').fill('Grace');
+    await dialog.getByLabel('Last name').fill('Hopper');
+    await dialog.getByLabel('Username').fill('grace');
+    await dialog.getByLabel('Email', { exact: true }).fill(learner.email);
+    await dialog.getByRole('button', { name: 'Role', exact: true }).click();
+    await page
+      .getByRole('option', { name: new RegExp(`^${role}$`, 'i') })
+      .click();
+    await dialog.getByRole('button', { name: 'Send invitation' }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole('alert')).toHaveText(
+      'Invitation sent successfully',
+    );
+    await expect(page.getByText('Showing 1 of 1 users')).toBeVisible();
+    await expect(
+      page.getByLabel('Status for Grace Hopper', { exact: true }),
+    ).toHaveText('Pending');
+  });
+}
+
+test('invitation validation and delivery errors retain the form', async ({
+  page,
+}) => {
+  await session(page);
+  await page.route('**/api/v1/users/', (route) => route.fulfill({ json: [] }));
+  await page.route('**/api/v1/users/invite/', (route) =>
+    route.fulfill({
+      status: 400,
+      json: { email: ['This email is already registered.'] },
+    }),
+  );
+  await page.goto('/users');
+  await page.getByRole('button', { name: 'Create user', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Create user', exact: true });
+  await dialog.getByLabel('First name').fill('Grace');
+  await dialog.getByLabel('Last name').fill('Hopper');
+  await dialog.getByLabel('Username').fill('grace');
+  await dialog.getByLabel('Email', { exact: true }).fill(learner.email);
+  await dialog.getByRole('button', { name: 'Send invitation' }).click();
+  await expect(
+    dialog.getByText('This email is already registered.'),
+  ).toBeVisible();
+  await expect(dialog.getByLabel('Email', { exact: true })).toHaveValue(
+    learner.email,
+  );
+  await page.route('**/api/v1/users/invite/', (route) =>
+    route.fulfill({
+      status: 503,
+      json: { message: 'Invitation delivery failed.' },
+    }),
+  );
+  await dialog.getByRole('button', { name: 'Send invitation' }).click();
+  await expect(dialog.getByRole('alert')).toHaveText(
+    'Invitation delivery failed.',
+  );
+  await expect(
+    dialog.getByRole('button', { name: 'Send invitation' }),
+  ).toBeEnabled();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Create user', exact: true }),
+  ).toBeFocused();
+});
+
+test('resend invitation is pending-only, prevents duplicate sends and handles failures', async ({
+  page,
+}) => {
+  await session(page);
+  let listRequests = 0;
+  await page.route('**/api/v1/users/', (route) => {
+    listRequests++;
+    return route.fulfill({
+      json: ['PENDING', 'PD', 'ACTIVE', 'SUSPENDED', 'INACTIVE'].map(
+        (status, index) => ({
+          ...learner,
+          id: String(index + 2),
+          full_name: `Member ${index}`,
+          status,
+        }),
+      ),
+    });
+  });
+  let requests = 0;
+  let release!: () => void;
+  await page.route('**/api/v1/users/2/resend-invite/', async (route) => {
+    requests++;
+    expect(route.request().method()).toBe('POST');
+    expect(route.request().headers().authorization).toBe('Bearer access');
+    await new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await route.fulfill({ json: { message: 'Invitation email sent again.' } });
+  });
+  await page.goto('/users');
+  const buttons = page.getByRole('button', {
+    name: 'Resend invitation',
+    exact: true,
+  });
+  await expect(buttons).toHaveCount(2);
+  await buttons.first().click();
+  await expect(
+    page.getByRole('button', { name: 'Sending…', exact: true }),
+  ).toBeDisabled();
+  await expect(buttons).toBeDisabled();
+  await expect.poll(() => requests).toBe(1);
+  release();
+  await expect(page.getByRole('alert')).toHaveText(
+    'Invitation email sent again.',
+  );
+  expect(listRequests).toBe(1);
+  await page.route('**/api/v1/users/2/resend-invite/', (route) =>
+    route.fulfill({
+      status: 503,
+      json: { detail: 'Invitation delivery failed.' },
+    }),
+  );
+  await buttons.first().click();
+  await expect(page.getByRole('alert')).toHaveText(
+    'Invitation delivery failed.',
+  );
+  await expect(buttons.first()).toBeEnabled();
+});
+
+for (const responseBody of [{ message: 'Updated successfully' }, { id: '2' }]) {
+  test(`partial mutation responses update user role and status without list reload: ${JSON.stringify(responseBody)}`, async ({
+    page,
+  }) => {
+    await session(page);
+    let current = { ...learner, role: ['instructor'], is_staff: false };
+    let listRequests = 0;
+    await page.route('**/api/v1/users/', (route) => {
+      listRequests++;
+      return route.fulfill({ json: [current] });
+    });
+    await page.route('**/api/v1/users/2/', (route) =>
+      route.fulfill({ json: current }),
+    );
+    await page.route('**/api/v1/users/2/modify_admin_privileges/', (route) => {
+      const admin = route.request().postDataJSON().is_admin;
+      current = {
+        ...current,
+        is_staff: admin,
+        role: admin ? ['admin'] : ['instructor'],
+      };
+      return route.fulfill({ json: responseBody });
+    });
+    await page.route('**/api/v1/users/2/modify_user_status/', (route) => {
+      current = { ...current, status: route.request().postDataJSON().status };
+      return route.fulfill({ json: responseBody });
+    });
+    await page.goto('/users');
+    const row = page.getByRole('row').filter({ hasText: learner.email });
+    await row.getByRole('button', { name: 'Make admin' }).click();
+    await expect(
+      row.getByRole('button', { name: 'Remove admin' }),
+    ).toBeVisible();
+    await expect(row.getByText('Administrator', { exact: true })).toBeVisible();
+    await row.getByRole('button', { name: 'Remove admin' }).click();
+    await expect(row.getByRole('button', { name: 'Make admin' })).toBeVisible();
+    await expect(row.getByText('Instructor', { exact: true })).toBeVisible();
+    await row
+      .getByRole('button', { name: 'Status for Grace Hopper', exact: true })
+      .click();
+    await page.getByRole('option', { name: 'Pending', exact: true }).click();
+    await expect(
+      row.getByLabel('Status for Grace Hopper', { exact: true }),
+    ).toHaveText('Pending');
+    await expect(
+      row.getByRole('button', { name: 'Resend invitation' }),
+    ).toBeVisible();
+    expect(listRequests).toBe(1);
+  });
+}

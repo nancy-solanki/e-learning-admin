@@ -28,7 +28,26 @@ import {
 import { applyServerErrors } from '../../src/lib/form';
 import type { User } from '../../src/types/auth';
 
-const user = { id: '1', role: ['admin'] } as User;
+const user: User = {
+  id: '1',
+  email: 'ada@example.com',
+  first_name: 'Ada',
+  last_name: 'Lovelace',
+  full_name: 'Ada Lovelace',
+  username: 'ada',
+  phone_number: '',
+  avatar: null,
+  birth_date: null,
+  gender: '',
+  email_notifications: false,
+  public_profile: false,
+  search_engine_visibility: false,
+  share_learning_activity: false,
+  role: ['admin'],
+  language: 'en',
+  bio: '',
+  status: 'AC',
+};
 const tokens = { access: 'access', refresh: 'refresh' };
 function response(data: unknown, config: InternalAxiosRequestConfig) {
   return {
@@ -298,6 +317,31 @@ describe('API operations', () => {
     expect(adapter.mock.calls[6][0].data.get('avatar').name).toBe('a.png');
     expect(await client.getCurrentUser()).toEqual(user);
   });
+  it.each([
+    ['profile', () => client.updateUser('1', { first_name: 'Ada' })],
+    ['status', () => client.updateUserStatus('1', 'SA')],
+    ['admin privileges', () => client.updateUserAdminPrivileges('1', true)],
+  ] as const)(
+    'fetches the affected user after a %s acknowledgement',
+    async (_name, update) => {
+      const updatedUser = { ...user, status: 'SA' };
+      const adapter = vi.fn(async (config: InternalAxiosRequestConfig) =>
+        response(
+          config.method === 'put' ? { message: 'Updated' } : updatedUser,
+          config,
+        ),
+      );
+      client.api.defaults.adapter = adapter;
+
+      expect(await update()).toEqual(updatedUser);
+      expect(
+        adapter.mock.calls.map(([config]) => [config.method, config.url]),
+      ).toEqual([
+        ['put', expect.any(String)],
+        ['get', client.userEndpoints.detail('1')],
+      ]);
+    },
+  );
   it('maps API messages and field errors safely', () => {
     const config = {} as InternalAxiosRequestConfig;
     for (const data of [

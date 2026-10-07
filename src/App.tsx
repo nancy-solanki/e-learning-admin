@@ -26,6 +26,7 @@ import UsersPage from './pages/users/UsersPage';
 import CategoriesPage from './pages/categories/CategoriesPage';
 import LocalizationsPage from './pages/localizations/LocalizationsPage';
 import CouponsPage from './pages/coupons/CouponsPage';
+import CoursesPage from './pages/courses/CoursesPage';
 import './styles.css';
 
 function subscribeAuth(callback: () => void) {
@@ -109,7 +110,9 @@ function PublicRoute() {
   const from: unknown = location.state?.from;
   const destination =
     typeof from === 'string' &&
-    /^\/(?:users|profile|categories|coupons|localizations)(?:\?|$)/.test(from)
+    /^\/(?:users|profile|categories|coupons|courses|localizations)(?:\?|$)/.test(
+      from,
+    )
       ? from
       : '/';
   return session !== null ? <Navigate to={destination} replace /> : <Outlet />;
@@ -145,6 +148,7 @@ export default function App() {
           <Route element={<AdminLayout />}>
             <Route index element={<HomePage />} />
             <Route path="coupons" element={<CouponsPage />} />
+            <Route path="courses" element={<CoursesPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route element={<AdminRoute />}>
               <Route path="users" element={<UsersPage />} />

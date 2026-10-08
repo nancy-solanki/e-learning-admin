@@ -4,7 +4,7 @@ import axios, {
   AxiosHeaders,
   type InternalAxiosRequestConfig,
 } from 'axios';
-import { api } from '../../src/api/axios';
+import { api, authTransport, resetCsrf } from '../../src/api/axios';
 import { ENDPOINTS } from '../../src/api/endpoints';
 import {
   createLocalization,
@@ -14,7 +14,7 @@ import {
   replaceLocalization,
   toggleLocalization,
 } from '../../src/api/services/localizations';
-import { clearSessionCache, saveTokens } from '../../src/state/session';
+import { clearSessionCache } from '../../src/state/session';
 
 const originalAdapter = api.defaults.adapter;
 
@@ -40,7 +40,9 @@ beforeEach(() => {
     removeItem: (key: string) => storage.delete(key),
   });
   clearSessionCache();
-  saveTokens({ access: 'access', refresh: 'refresh' });
+  resetCsrf();
+  authTransport.defaults.adapter = async (config) =>
+    response({ csrfToken: 'csrf' }, config);
 });
 
 afterEach(() => {
@@ -67,7 +69,8 @@ describe('localization API', () => {
       expect(config.url).toBe('/api/v1/localization/');
       expect(config.params).toEqual(filters);
       expect(config.signal).toBe(signal);
-      expect(config.headers.Authorization).toBe('Bearer access');
+      expect(config.headers.Authorization).toBeUndefined();
+      expect(config.withCredentials).toBe(true);
       return response(result, config);
     };
     expect(await listLocalizations(filters, signal)).toEqual(result);

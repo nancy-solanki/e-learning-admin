@@ -9,11 +9,13 @@ import {
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import {
-  AUTH_EVENT,
-  readTokens,
-  clearSessionCache as clearCurrentUser,
-  getSessionVersion,
+  subscribeAuth,
+  sessionTabId,
+  getSessionUser,
+  setSessionUser,
+  removeLegacyAuth,
 } from './state/session';
+import axios from 'axios';
 import { getCurrentUser } from './state/profile';
 import { isAdmin } from './lib/permissions';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
@@ -29,29 +31,14 @@ import CouponsPage from './pages/coupons/CouponsPage';
 import CoursesPage from './pages/courses/CoursesPage';
 import './styles.css';
 
-function subscribeAuth(callback: () => void) {
-  const storage = (event: StorageEvent) => {
-    if (event.key !== null && event.key !== 'learninfy.auth') return;
-    clearCurrentUser();
-    callback();
-  };
-  window.addEventListener(AUTH_EVENT, callback);
-  window.addEventListener('storage', storage);
-  return () => {
-    window.removeEventListener(AUTH_EVENT, callback);
-    window.removeEventListener('storage', storage);
-  };
-}
 function useAuthSession() {
-  return useSyncExternalStore(subscribeAuth, () =>
-    readTokens() ? getSessionVersion() : null,
-  );
+  return useSyncExternalStore(subscribeAuth, getSessionUser);
 }
 function ProtectedRoute() {
   const session = useAuthSession();
   const location = useLocation();
-  return session !== null ? (
-    <SessionGate key={session} />
+  return session ? (
+    <Outlet />
   ) : (
     <Navigate
       to="/auth/sign-in"
@@ -67,12 +54,20 @@ function SessionGate() {
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let active = true;
+    removeLegacyAuth();
     getCurrentUser()
-      .then(() => {
-        if (active) setStatus('ready');
+      .then((user) => {
+        if (active) {
+          setSessionUser(user);
+          setStatus('ready');
+        }
       })
-      .catch(() => {
-        if (active) setStatus('error');
+      .catch((error) => {
+        if (!active) return;
+        if (axios.isAxiosError(error) && error.response?.status === 401) {
+          setSessionUser(null);
+          setStatus('ready');
+        } else setStatus('error');
       });
     return () => {
       active = false;
@@ -115,7 +110,7 @@ function PublicRoute() {
     )
       ? from
       : '/';
-  return session !== null ? <Navigate to={destination} replace /> : <Outlet />;
+  return session ? <Navigate to={destination} replace /> : <Outlet />;
 }
 function AdminRoute() {
   const [access, setAccess] = useState<
@@ -141,40 +136,50 @@ function AdminRoute() {
 }
 
 export default function App() {
+  useEffect(() => {
+    if (typeof BroadcastChannel === 'undefined') return;
+    const channel = new BroadcastChannel('learninfy-session');
+    channel.onmessage = (event) => {
+      if (event.data?.source !== sessionTabId) window.location.reload();
+    };
+    return () => channel.close();
+  }, []);
   return (
     <BrowserRouter>
       <Routes>
-        <Route element={<ProtectedRoute />}>
-          <Route element={<AdminLayout />}>
-            <Route index element={<HomePage />} />
-            <Route path="coupons" element={<CouponsPage />} />
-            <Route path="courses" element={<CoursesPage />} />
-            <Route path="profile" element={<ProfilePage />} />
-            <Route element={<AdminRoute />}>
-              <Route path="users" element={<UsersPage />} />
-              <Route path="categories" element={<CategoriesPage />} />
+        <Route element={<SessionGate />}>
+          <Route element={<ProtectedRoute />}>
+            <Route element={<AdminLayout />}>
+              <Route index element={<HomePage />} />
+              <Route path="coupons" element={<CouponsPage />} />
+              <Route path="courses" element={<CoursesPage />} />
+              <Route path="profile" element={<ProfilePage />} />
+              <Route element={<AdminRoute />}>
+                <Route path="users" element={<UsersPage />} />
+                <Route path="categories" element={<CategoriesPage />} />
+              </Route>
+              <Route path="localizations" element={<LocalizationsPage />} />
             </Route>
-            <Route path="localizations" element={<LocalizationsPage />} />
           </Route>
-        </Route>
 
-        <Route element={<PublicRoute />}>
-          <Route path="/auth/sign-in" element={<SignInPage />} />
+          <Route element={<PublicRoute />}>
+            <Route path="/auth/sign-in" element={<SignInPage />} />
+            <Route
+              path="/auth/forgot-password"
+              element={<ForgotPasswordPage />}
+            />
+          </Route>
           <Route
-            path="/auth/forgot-password"
-            element={<ForgotPasswordPage />}
+            path="/auth/activate-account/:uid/:token"
+            element={<ResetPasswordPage kind="activate" />}
           />
-        </Route>
-        <Route
-          path="/auth/activate-account/:uid/:token"
-          element={<ResetPasswordPage kind="activate" />}
-        />
-        <Route
-          path="/auth/reset-password/:uid/:token"
-          element={<ResetPasswordPage kind="reset" />}
-        />
+          <Route
+            path="/auth/reset-password/:uid/:token"
+            element={<ResetPasswordPage kind="reset" />}
+          />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );

@@ -27,16 +27,21 @@ const learner = {
   role: ['learner'],
 };
 async function session(page: Page, user = admin) {
-  await page.addInitScript(() =>
-    localStorage.setItem(
-      'learninfy.auth',
-      JSON.stringify({ access: 'access', refresh: 'refresh' }),
-    ),
-  );
   await page.route('**/api/v1/users/me/', (route) =>
     route.fulfill({ json: user }),
   );
 }
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/v1/auth/csrf/', (route) =>
+    route.fulfill({ json: { csrfToken: 'csrf' } }),
+  );
+  await page.route('**/api/v1/users/me/', (route) =>
+    route.fulfill({ status: 401, json: {} }),
+  );
+  await page.route('**/api/v1/auth/refresh/', (route) =>
+    route.fulfill({ status: 401, json: {} }),
+  );
+});
 test('anonymous routes redirect and sign-in validates fields', async ({
   page,
 }) => {
@@ -49,11 +54,16 @@ test('anonymous routes redirect and sign-in validates fields', async ({
 test('sign-in success, home navigation, and failed server logout', async ({
   page,
 }) => {
-  await page.route('**/api/v1/auth/staff/sign-in/', (route) =>
-    route.fulfill({ json: { access: 'access', refresh: 'refresh' } }),
-  );
+  let signedIn = false;
+  await page.route('**/api/v1/auth/staff/sign-in/', (route) => {
+    signedIn = true;
+    return route.fulfill({ json: {} });
+  });
   await page.route('**/api/v1/users/me/', (route) =>
-    route.fulfill({ json: admin }),
+    route.fulfill({
+      status: signedIn ? 200 : 401,
+      json: signedIn ? admin : {},
+    }),
   );
   await page.route('**/api/v1/auth/sign-out/', (route) =>
     route.fulfill({ status: 500, json: {} }),
@@ -78,6 +88,14 @@ test('sign-in success, home navigation, and failed server logout', async ({
   await expect(page).toHaveURL(/\/$/);
   await page.getByRole('button', { name: 'Account menu' }).click();
   await page.getByRole('menuitem', { name: 'Log out' }).click();
+  await expect(
+    page.getByText('Unable to log out. Please try again.'),
+  ).toBeVisible();
+  await page.route('**/api/v1/auth/sign-out/', (route) =>
+    route.fulfill({ status: 204 }),
+  );
+  await page.getByRole('button', { name: 'Account menu' }).click();
+  await page.getByRole('menuitem', { name: 'Log out' }).click();
   await expect(page).toHaveURL(/auth\/sign-in/);
   expect(
     await page.evaluate(() => localStorage.getItem('learninfy.auth')),
@@ -95,7 +113,7 @@ test('invalid credentials and failed profile fetch leave no session', async ({
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveText('Invalid credentials');
   await page.route('**/api/v1/auth/staff/sign-in/', (route) =>
-    route.fulfill({ json: { access: 'a', refresh: 'r' } }),
+    route.fulfill({ json: {} }),
   );
   await page.route('**/api/v1/users/me/', (route) =>
     route.fulfill({ status: 500, json: { detail: 'Unavailable' } }),
@@ -517,11 +535,13 @@ test('cross-tab logout removes the protected view', async ({ page }) => {
   await session(page);
   await page.goto('/profile');
   await expect(page.getByLabel('Full name')).toBeVisible();
+  await page.route('**/api/v1/users/me/', (route) =>
+    route.fulfill({ status: 401, json: {} }),
+  );
   await page.evaluate(() => {
-    localStorage.removeItem('learninfy.auth');
-    window.dispatchEvent(
-      new StorageEvent('storage', { key: 'learninfy.auth' }),
-    );
+    const channel = new BroadcastChannel('learninfy-session');
+    channel.postMessage('changed');
+    channel.close();
   });
   await expect(page).toHaveURL(/auth\/sign-in/);
 });
@@ -702,11 +722,16 @@ test('account dropdown supports keyboard navigation and SPA profile routing', as
 });
 
 test('sign-in returns to the requested protected page', async ({ page }) => {
-  await page.route('**/api/v1/auth/staff/sign-in/', (route) =>
-    route.fulfill({ json: { access: 'a', refresh: 'r' } }),
-  );
+  let signedIn = false;
+  await page.route('**/api/v1/auth/staff/sign-in/', (route) => {
+    signedIn = true;
+    return route.fulfill({ json: {} });
+  });
   await page.route('**/api/v1/users/me/', (route) =>
-    route.fulfill({ json: admin }),
+    route.fulfill({
+      status: signedIn ? 200 : 401,
+      json: signedIn ? admin : {},
+    }),
   );
   await page.goto('/profile');
   await expect(page).toHaveURL(/auth\/sign-in/);
@@ -719,32 +744,33 @@ test('sign-in returns to the requested protected page', async ({ page }) => {
 
 test('expired access refreshes and restores a deep link', async ({ page }) => {
   await session(page);
+  let refreshed = false;
   let refreshes = 0;
   await page.route('**/api/v1/users/me/', (route) =>
-    route.request().headers().authorization === 'Bearer fresh'
+    refreshed
       ? route.fulfill({ json: admin })
       : route.fulfill({ status: 401, json: {} }),
   );
   await page.route('**/api/v1/auth/refresh/', (route) => {
     refreshes++;
-    return route.fulfill({ json: { access: 'fresh', refresh: 'rotated' } });
+    refreshed = true;
+    return route.fulfill({ json: {} });
   });
   await page.goto('/profile');
   await expect(page.getByLabel('Full name')).toBeVisible();
   expect(refreshes).toBe(1);
   expect(
-    await page.evaluate(() =>
-      JSON.parse(localStorage.getItem('learninfy.auth')!),
-    ),
-  ).toEqual({ access: 'fresh', refresh: 'rotated' });
+    await page.evaluate(() => localStorage.getItem('learninfy.auth')),
+  ).toBeNull();
 });
 
 test('temporary refresh outage preserves the session and supports retry', async ({
   page,
 }) => {
   await session(page);
+  let refreshed = false;
   await page.route('**/api/v1/users/me/', (route) =>
-    route.request().headers().authorization === 'Bearer fresh'
+    refreshed
       ? route.fulfill({ json: admin })
       : route.fulfill({ status: 401, json: {} }),
   );
@@ -755,10 +781,11 @@ test('temporary refresh outage preserves the session and supports retry', async 
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
   expect(
     await page.evaluate(() => localStorage.getItem('learninfy.auth')),
-  ).not.toBeNull();
-  await page.route('**/api/v1/auth/refresh/', (route) =>
-    route.fulfill({ json: { access: 'fresh' } }),
-  );
+  ).toBeNull();
+  await page.route('**/api/v1/auth/refresh/', (route) => {
+    refreshed = true;
+    return route.fulfill({ json: {} });
+  });
   await page.getByRole('button', { name: 'Try again' }).click();
   await expect(page.getByLabel('Full name')).toBeVisible();
 });
@@ -837,9 +864,8 @@ for (const path of ['/users', '/profile']) {
   }) => {
     await session(page);
     let replacementRequests = 0;
+    let replacement = false;
     await page.route('**/api/v1/users/me/', (route) => {
-      const replacement =
-        route.request().headers().authorization === 'Bearer learner-access';
       if (replacement) replacementRequests++;
       return route.fulfill({ json: replacement ? learner : admin });
     });
@@ -856,15 +882,12 @@ for (const path of ['/users', '/profile']) {
     }
     const otherTab = await context.newPage();
     await otherTab.goto('/auth/reset-password/uid/token');
-    await otherTab.evaluate(() =>
-      localStorage.setItem(
-        'learninfy.auth',
-        JSON.stringify({
-          access: 'learner-access',
-          refresh: 'learner-refresh',
-        }),
-      ),
-    );
+    replacement = true;
+    await otherTab.evaluate(() => {
+      const channel = new BroadcastChannel('learninfy-session');
+      channel.postMessage('changed');
+      channel.close();
+    });
     if (path === '/users') {
       await expect(page).toHaveURL(/\/$/);
       await expect(
@@ -962,7 +985,8 @@ for (const role of ['admin', 'instructor', 'student']) {
     );
     await page.route('**/api/v1/users/invite/', (route) => {
       expect(route.request().method()).toBe('POST');
-      expect(route.request().headers().authorization).toBe('Bearer access');
+      expect(route.request().headers().authorization).toBeUndefined();
+      expect(route.request().headers()['x-csrftoken']).toBe('csrf');
       expect(route.request().postDataJSON()).toEqual({
         email: learner.email,
         username: 'grace',
@@ -1077,7 +1101,8 @@ test('resend invitation is pending-only, prevents duplicate sends and handles fa
   await page.route('**/api/v1/users/2/resend-invite/', async (route) => {
     requests++;
     expect(route.request().method()).toBe('POST');
-    expect(route.request().headers().authorization).toBe('Bearer access');
+    expect(route.request().headers().authorization).toBeUndefined();
+    expect(route.request().headers()['x-csrftoken']).toBe('csrf');
     await new Promise<void>((resolve) => {
       release = resolve;
     });

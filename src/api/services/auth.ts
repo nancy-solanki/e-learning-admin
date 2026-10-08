@@ -1,19 +1,22 @@
-import { api } from '../axios';
+import { broadcastSessionChange } from '../../state/session';
+import { api, resetCsrf, withAuthLock } from '../axios';
 import { ENDPOINTS, authEndpoints } from '../endpoints';
-import type { Tokens } from '../../state/session';
+import { fetchCurrentUser } from './users';
 import type {
   SignInCredentials,
   ChangePasswordCredentials,
 } from '../../types/auth';
 export async function signIn(values: SignInCredentials) {
-  return (await api.post<Tokens>(authEndpoints.signIn, values)).data;
+  return withAuthLock(async () => {
+    await api.post(authEndpoints.signIn, values);
+    resetCsrf();
+    broadcastSessionChange();
+  }).then(() => fetchCurrentUser());
 }
-export async function signOut(tokens: Tokens) {
-  await api.post(
-    authEndpoints.signOut,
-    { refresh_token: tokens.refresh },
-    { headers: { Authorization: `Bearer ${tokens.access}` } },
-  );
+export async function signOut() {
+  await withAuthLock(() => api.post(authEndpoints.signOut));
+  resetCsrf();
+  broadcastSessionChange();
 }
 export async function sendResetPasswordEmail(values: { email: string }) {
   return (

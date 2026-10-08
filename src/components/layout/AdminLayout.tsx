@@ -11,7 +11,7 @@ import {
 } from '../../components/icons/AdminIcons';
 import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { clearTokens, readTokens } from '../../state/session';
+import { clearSession } from '../../state/session';
 import { useCurrentUser } from '../../state/profile';
 import { isAdmin } from '../../lib/permissions';
 
@@ -25,14 +25,14 @@ export default function AdminLayout() {
   const [loggingOut, setLoggingOut] = useState(false);
   const logout = async () => {
     setLoggingOut(true);
-    const tokens = readTokens();
-    // Clear local state immediately, even if revocation is slow or unavailable.
-    clearTokens();
-    navigate('/auth/sign-in', { replace: true });
     try {
-      if (tokens) await signOut(tokens);
+      await signOut();
+      clearSession();
+      navigate('/auth/sign-in', { replace: true });
     } catch {
-      /* Local logout has already completed. */
+      setError('Unable to log out. Please try again.');
+    } finally {
+      setLoggingOut(false);
     }
   };
   const linkClass = ({ isActive }: { isActive: boolean }) =>

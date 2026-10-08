@@ -1,4 +1,5 @@
-export const API_ROOT = (import.meta.env.VITE_API_ROOT_URL ?? '').replace(
-  /\/$/,
-  '',
-);
+export const API_ROOT = (
+  import.meta.env.VITE_API_URL ??
+  import.meta.env.VITE_API_ROOT_URL ??
+  ''
+).replace(/\/$/, '');

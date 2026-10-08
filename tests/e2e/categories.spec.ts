@@ -1,14 +1,13 @@
 import { test, expect } from '@playwright/test';
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/v1/auth/csrf/', (route) =>
+    route.fulfill({ json: { csrfToken: 'csrf' } }),
+  );
+});
 
 test('category create, drag upload, edit without replacing thumbnail, and delete', async ({
   page,
 }) => {
-  await page.addInitScript(() =>
-    localStorage.setItem(
-      'learninfy.auth',
-      JSON.stringify({ access: 'access', refresh: 'refresh' }),
-    ),
-  );
   await page.route('**/api/v1/users/me/', (route) =>
     route.fulfill({ json: { id: '1', username: 'admin', role: ['admin'] } }),
   );
@@ -29,7 +28,8 @@ test('category create, drag upload, edit without replacing thumbnail, and delete
       expect(request.headers()['content-type']).toContain(
         'multipart/form-data; boundary=',
       );
-      expect(request.headers().authorization).toBe('Bearer access');
+      expect(request.headers().authorization).toBeUndefined();
+      expect(request.headers()['x-csrftoken']).toBe('csrf');
       const body = request.postDataBuffer()!.toString();
       if (request.method() === 'POST') {
         expect(body).toContain('filename="python.png"');
@@ -125,12 +125,6 @@ test('category create, drag upload, edit without replacing thumbnail, and delete
 test('category sort supports keyboard navigation and updates server ordering', async ({
   page,
 }, testInfo) => {
-  await page.addInitScript(() =>
-    localStorage.setItem(
-      'learninfy.auth',
-      JSON.stringify({ access: 'access', refresh: 'refresh' }),
-    ),
-  );
   await page.route('**/api/v1/users/me/', (route) =>
     route.fulfill({ json: { id: '1', username: 'admin', role: ['admin'] } }),
   );
@@ -215,12 +209,6 @@ test('category sort supports keyboard navigation and updates server ordering', a
 test('profile displays backend URL avatars and updates the shared avatar after upload', async ({
   page,
 }) => {
-  await page.addInitScript(() =>
-    localStorage.setItem(
-      'learninfy.auth',
-      JSON.stringify({ access: 'access', refresh: 'refresh' }),
-    ),
-  );
   const user = {
     id: '1',
     full_name: 'Ada Lovelace',

@@ -4,7 +4,7 @@ import axios, {
   AxiosHeaders,
   type InternalAxiosRequestConfig,
 } from 'axios';
-import { api } from '../../src/api/axios';
+import { api, authTransport, resetCsrf } from '../../src/api/axios';
 import {
   getCoupon,
   listCoupons,
@@ -13,7 +13,7 @@ import {
 } from '../../src/api/services/coupons';
 import { ENDPOINTS } from '../../src/api/endpoints';
 import { emptyDraft } from '../../src/pages/coupons/model';
-import { clearSessionCache, saveTokens } from '../../src/state/session';
+import { clearSessionCache } from '../../src/state/session';
 const originalAdapter = api.defaults.adapter;
 function response(data: unknown, config: InternalAxiosRequestConfig) {
   return {
@@ -31,7 +31,9 @@ beforeEach(() => {
     setItem: (key: string, value: string) => storage.set(key, value),
   });
   clearSessionCache();
-  saveTokens({ access: 'access', refresh: 'refresh' });
+  resetCsrf();
+  authTransport.defaults.adapter = async (config) =>
+    response({ csrfToken: 'csrf' }, config);
 });
 afterEach(() => {
   api.defaults.adapter = originalAdapter;
@@ -41,7 +43,7 @@ afterEach(() => {
 });
 
 describe('coupon API', () => {
-  it('forwards list filters, bearer authentication, and cancellation', async () => {
+  it('forwards list filters, cookie authentication, and cancellation', async () => {
     const filters = {
       search: 'SAVE & LEARN',
       is_deleted: false,
@@ -55,7 +57,8 @@ describe('coupon API', () => {
       expect(config.url).toBe('/api/v1/coupon/management/');
       expect(config.params).toEqual(filters);
       expect(config.signal).toBe(signal);
-      expect(config.headers.Authorization).toBe('Bearer access');
+      expect(config.headers.Authorization).toBeUndefined();
+      expect(config.withCredentials).toBe(true);
       return response(result, config);
     };
     expect(await listCoupons(filters, signal)).toEqual(result);

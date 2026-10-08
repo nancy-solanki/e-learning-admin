@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test';
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/v1/auth/csrf/', (route) =>
+    route.fulfill({ json: { csrfToken: 'csrf' } }),
+  );
+});
+
 test('coupon drag import, create, partial edit, delete and restore', async ({
   page,
 }) => {
-  await page.addInitScript(() =>
-    localStorage.setItem(
-      'learninfy.auth',
-      JSON.stringify({ access: 'access', refresh: 'refresh' }),
-    ),
-  );
   await page.route('**/api/v1/users/me/', (route) =>
     route.fulfill({ json: { id: '1', username: 'admin', role: ['admin'] } }),
   );

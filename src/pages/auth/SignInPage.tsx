@@ -8,8 +8,8 @@ import { AuthLayout } from '../../components/layout/AuthLayout';
 import { FormField } from '../../components/ui/FormField';
 import { FormNotice, type Notice } from '../../components/ui/FormNotice';
 import { apiErrorMessage } from '../../api/errors';
-import { getCurrentUser } from '../../state/profile';
-import { saveTokens, clearTokens, notifyAuthChange } from '../../state/session';
+import { setCurrentUser } from '../../state/profile';
+import { setSessionUser, clearSessionCache } from '../../state/session';
 import { applyServerErrors } from '../../lib/form';
 import { signInSchema, type SignInValues } from '../../lib/validation';
 
@@ -38,12 +38,11 @@ export default function SignInPage() {
 
     try {
       const data = await signIn(values);
-      saveTokens(data);
-      await getCurrentUser({ force: true });
-      notifyAuthChange();
+      clearSessionCache();
+      setCurrentUser(data);
+      setSessionUser(data);
       navigate(destination, { replace: true });
     } catch (error) {
-      clearTokens();
       applyServerErrors<SignInValues>(error, setError);
       setNotice({
         type: 'error',

@@ -1,11 +1,11 @@
 import { queryClient, queryKeys } from '../../src/state/queryClient';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import axios, {
+import {
   AxiosError,
   AxiosHeaders,
   type InternalAxiosRequestConfig,
 } from 'axios';
-import { api } from '../../src/api/axios';
+import { api, authTransport, resetCsrf } from '../../src/api/axios';
 import * as session from '../../src/state/session';
 import * as profile from '../../src/state/profile';
 import * as users from '../../src/api/services/users';
@@ -48,7 +48,6 @@ const user: User = {
   bio: '',
   status: 'AC',
 };
-const tokens = { access: 'access', refresh: 'refresh' };
 function response(data: unknown, config: InternalAxiosRequestConfig) {
   return {
     data,
@@ -81,7 +80,10 @@ beforeEach(() => {
       location: { origin: 'http://localhost' },
     }),
   );
-  client.clearTokens();
+  client.clearSession();
+  resetCsrf();
+  authTransport.defaults.adapter = async (config) =>
+    response({ csrfToken: 'csrf' }, config);
 });
 afterEach(() => {
   vi.restoreAllMocks();
@@ -117,27 +119,6 @@ describe('validation and permissions', () => {
 });
 
 describe('sessions', () => {
-  it.each([
-    'broken',
-    'null',
-    '{}',
-    '{"access":42,"refresh":"r"}',
-    '{"access":"a","refresh":""}',
-  ])('rejects malformed stored tokens %s', (value) => {
-    localStorage.setItem('learninfy.auth', value);
-    expect(client.readTokens()).toBeNull();
-  });
-  it('saves tokens, rejects invalid responses and emits logout', () => {
-    expect(client.readTokens()).toBeNull();
-    client.saveTokens(tokens);
-    expect(client.readTokens()).toEqual(tokens);
-    expect(() => client.saveTokens({ access: '', refresh: '' })).toThrow();
-    const listener = vi.fn();
-    window.addEventListener(client.AUTH_EVENT, listener);
-    client.clearTokens();
-    expect(listener).toHaveBeenCalledOnce();
-    expect(client.readTokens()).toBeNull();
-  });
   it('deduplicates and caches current-user requests', async () => {
     const adapter = vi.fn(async (config) => response(user, config));
     client.api.defaults.adapter = adapter;
@@ -155,82 +136,10 @@ describe('sessions', () => {
       });
     const pending = client.getCurrentUser();
     await vi.waitFor(() => expect(resolve).toBeDefined());
-    client.clearTokens();
+    client.clearSession();
     resolve(response(user, {} as InternalAxiosRequestConfig));
     await expect(pending).rejects.toThrow('Session changed');
   });
-  it('shares refresh requests and preserves non-rotating refresh tokens', async () => {
-    client.saveTokens(tokens);
-    const refresh = vi
-      .spyOn(axios, 'post')
-      .mockResolvedValue({ data: { access: 'new' } });
-    client.api.defaults.adapter = async (config) => {
-      if (config.headers.Authorization !== 'Bearer new') throw failure(config);
-      return response(user, config);
-    };
-    await Promise.all([
-      client.api.get('/protected'),
-      client.api.get('/protected'),
-    ]);
-    expect(refresh).toHaveBeenCalledOnce();
-    expect(client.readTokens()).toEqual({ access: 'new', refresh: 'refresh' });
-  });
-  it('clears tokens and cached identity on refresh rejection', async () => {
-    client.saveTokens(tokens);
-    client.setCurrentUser(user);
-    vi.spyOn(axios, 'post').mockRejectedValue(new Error('Expired'));
-    client.api.defaults.adapter = async (config) => {
-      throw failure(config);
-    };
-    await expect(client.api.get('/protected')).rejects.toThrow('Expired');
-    expect(client.readTokens()).toBeNull();
-    client.api.defaults.adapter = async (config) =>
-      response({ ...user, id: '2' }, config);
-    expect((await client.getCurrentUser()).id).toBe('2');
-  });
-  it('does not resurrect tokens when refresh completes after logout', async () => {
-    client.saveTokens(tokens);
-    let resolve!: (value: unknown) => void;
-    vi.spyOn(axios, 'post').mockImplementation(
-      () =>
-        new Promise((done) => {
-          resolve = done;
-        }),
-    );
-    client.api.defaults.adapter = async (config) => {
-      throw failure(config);
-    };
-    const pending = client.api.get('/protected');
-    await vi.waitFor(() => expect(resolve).toBeDefined());
-    client.clearTokens();
-    resolve({ data: tokens });
-    await expect(pending).rejects.toThrow('Session changed');
-    expect(client.readTokens()).toBeNull();
-  });
-  it('stops retrying after a second 401', async () => {
-    client.saveTokens(tokens);
-    const refresh = vi.spyOn(axios, 'post').mockResolvedValue({ data: tokens });
-    client.api.defaults.adapter = async (config) => {
-      throw failure(config);
-    };
-    await expect(client.api.get('/protected')).rejects.toBeInstanceOf(
-      AxiosError,
-    );
-    expect(refresh).toHaveBeenCalledOnce();
-    expect(client.readTokens()).toBeNull();
-  });
-  it.each(['/api/v1/auth/staff/sign-in/', '/api/v1/auth/refresh/'])(
-    'does not refresh public authentication requests %s',
-    async (url) => {
-      client.saveTokens(tokens);
-      const refresh = vi.spyOn(axios, 'post');
-      client.api.defaults.adapter = async (config) => {
-        throw failure(config);
-      };
-      await expect(client.api.post(url)).rejects.toBeInstanceOf(AxiosError);
-      expect(refresh).not.toHaveBeenCalled();
-    },
-  );
   it('passes through network and non-401 errors', async () => {
     client.api.defaults.adapter = async () => {
       throw new Error('Offline');
@@ -370,25 +279,6 @@ describe('API operations', () => {
   });
 });
 
-it('ignores a late 401 from an old session without clearing the new login', async () => {
-  client.saveTokens(tokens);
-  let reject!: (error: unknown) => void;
-  let oldConfig!: InternalAxiosRequestConfig;
-  client.api.defaults.adapter = (config) =>
-    new Promise((_resolve, fail) => {
-      oldConfig = config;
-      reject = fail;
-    });
-  const pending = client.api.get('/protected');
-  await vi.waitFor(() => expect(reject).toBeDefined());
-  client.clearTokens();
-  const newTokens = { access: 'new-login', refresh: 'new-refresh' };
-  client.saveTokens(newTokens);
-  reject(failure(oldConfig));
-  await expect(pending).rejects.toBeInstanceOf(AxiosError);
-  expect(client.readTokens()).toEqual(newTokens);
-});
-
 it('requires a sign-in password without applying new-password strength rules', () => {
   expect(
     signInSchema.safeParse({ email: 'a@example.com', password: '' }).success,
@@ -401,48 +291,6 @@ it('requires a sign-in password without applying new-password strength rules', (
   expect(resetPasswordSchema.safeParse({ password: 'x' }).success).toBe(false);
 });
 
-it('reuses rotated tokens for a delayed 401 without a second refresh', async () => {
-  client.saveTokens(tokens);
-  let rejectSlow!: (error: unknown) => void;
-  let slowConfig!: InternalAxiosRequestConfig;
-  const refresh = vi
-    .spyOn(axios, 'post')
-    .mockResolvedValue({ data: { access: 'fresh', refresh: 'rotated' } });
-  client.api.defaults.adapter = (config) => {
-    if (config.headers.Authorization === 'Bearer fresh')
-      return Promise.resolve(response(user, config));
-    if (config.url === '/slow')
-      return new Promise((_resolve, reject) => {
-        slowConfig = config;
-        rejectSlow = reject;
-      });
-    return Promise.reject(failure(config));
-  };
-  const slow = client.api.get('/slow');
-  await vi.waitFor(() => expect(rejectSlow).toBeDefined());
-  await client.api.get('/fast');
-  rejectSlow(failure(slowConfig));
-  await slow;
-  expect(refresh).toHaveBeenCalledOnce();
-  expect(client.readTokens()).toEqual({ access: 'fresh', refresh: 'rotated' });
-});
-
-it.each([undefined, 503])(
-  'keeps the session on transient refresh failure %s',
-  async (status) => {
-    client.saveTokens(tokens);
-    const error = status
-      ? failure({} as InternalAxiosRequestConfig, status)
-      : new AxiosError('Network unavailable', 'ERR_NETWORK');
-    vi.spyOn(axios, 'post').mockRejectedValue(error);
-    client.api.defaults.adapter = async (config) => {
-      throw failure(config);
-    };
-    await expect(client.api.get('/protected')).rejects.toBe(error);
-    expect(client.readTokens()).toEqual(tokens);
-  },
-);
-
 describe('shared server-state isolation', () => {
   it('clears profile, users, and categories on logout', () => {
     client.setCurrentUser(user);
@@ -450,7 +298,7 @@ describe('shared server-state isolation', () => {
     queryClient.setQueryData([...queryKeys.categories, 'list', { page: 1 }], {
       results: [{ id: 'private' }],
     });
-    client.clearTokens();
+    client.clearSession();
     expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
   });
   it('does not restore an old profile when a write finishes after an account change', async () => {

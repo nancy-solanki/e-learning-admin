@@ -1,14 +1,13 @@
 import { expect, test } from '@playwright/test';
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/v1/auth/csrf/', (route) =>
+    route.fulfill({ json: { csrfToken: 'csrf' } }),
+  );
+});
 
 test('sidebar localization link opens the localization page', async ({
   page,
 }) => {
-  await page.addInitScript(() =>
-    localStorage.setItem(
-      'learninfy.auth',
-      JSON.stringify({ access: 'access', refresh: 'refresh' }),
-    ),
-  );
   await page.route('**/api/v1/users/me/', (route) =>
     route.fulfill({ json: { id: '1', username: 'admin', role: ['admin'] } }),
   );
@@ -33,12 +32,6 @@ test('sidebar localization link opens the localization page', async ({
 test('admin can filter, create, update, and delete localizations', async ({
   page,
 }) => {
-  await page.addInitScript(() =>
-    localStorage.setItem(
-      'learninfy.auth',
-      JSON.stringify({ access: 'access', refresh: 'refresh' }),
-    ),
-  );
   await page.route('**/api/v1/users/me/', (route) =>
     route.fulfill({ json: { id: '1', username: 'admin', role: ['admin'] } }),
   );
@@ -167,12 +160,6 @@ test('admin can filter, create, update, and delete localizations', async ({
 });
 
 test('non-admin users only read active localizations', async ({ page }) => {
-  await page.addInitScript(() =>
-    localStorage.setItem(
-      'learninfy.auth',
-      JSON.stringify({ access: 'access', refresh: 'refresh' }),
-    ),
-  );
   await page.route('**/api/v1/users/me/', (route) =>
     route.fulfill({
       json: { id: '2', username: 'learner', role: ['learner'] },
@@ -200,12 +187,6 @@ test('non-admin users only read active localizations', async ({ page }) => {
 test('returns to the previous page when a toggle empties the current page', async ({
   page,
 }) => {
-  await page.addInitScript(() =>
-    localStorage.setItem(
-      'learninfy.auth',
-      JSON.stringify({ access: 'access', refresh: 'refresh' }),
-    ),
-  );
   await page.route('**/api/v1/users/me/', (route) =>
     route.fulfill({ json: { id: '1', username: 'admin', role: ['admin'] } }),
   );

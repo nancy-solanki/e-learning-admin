@@ -1,7 +1,17 @@
 import { queryClient } from './queryClient';
-export type Tokens = { access: string; refresh: string };
+import type { User } from '../types/auth';
 const TOKEN_KEY = 'learninfy.auth';
+export const sessionTabId = crypto.randomUUID();
 let sessionVersion = 0;
+let user: User | null | undefined;
+const listeners = new Set<() => void>();
+export const subscribeAuth = (callback: () => void) => {
+  listeners.add(callback);
+  return () => {
+    listeners.delete(callback);
+  };
+};
+export const getSessionUser = () => user;
 export function getSessionVersion() {
   return sessionVersion;
 }
@@ -9,40 +19,28 @@ export function clearSessionCache() {
   sessionVersion += 1;
   queryClient.clear();
 }
-export function readTokens(): Tokens | null {
-  try {
-    const stored = localStorage.getItem(TOKEN_KEY);
-    if (!stored) return null;
-    const tokens = JSON.parse(stored) as Tokens;
-    return typeof tokens?.access === 'string' &&
-      tokens.access.length > 0 &&
-      typeof tokens.refresh === 'string' &&
-      tokens.refresh.length > 0
-      ? tokens
-      : null;
-  } catch {
-    return null;
+export function setSessionUser(value: User | null) {
+  user = value;
+  listeners.forEach((listener) => listener());
+}
+export function clearSession() {
+  clearSessionCache();
+  setSessionUser(null);
+}
+// Migration only: discard the known legacy credential key, never preferences.
+export function removeLegacyAuth() {
+  for (const name of ['localStorage', 'sessionStorage'] as const) {
+    try {
+      window[name].removeItem(TOKEN_KEY);
+    } catch {
+      /* Storage may be disabled. */
+    }
   }
 }
 
-export function saveTokens(tokens: Tokens) {
-  if (
-    !tokens ||
-    typeof tokens.access !== 'string' ||
-    !tokens.access ||
-    typeof tokens.refresh !== 'string' ||
-    !tokens.refresh
-  )
-    throw new Error('Invalid authentication response.');
-  localStorage.setItem(TOKEN_KEY, JSON.stringify(tokens));
-}
-
-export const AUTH_EVENT = 'learninfy:auth';
-export function notifyAuthChange() {
-  window.dispatchEvent(new Event(AUTH_EVENT));
-}
-export function clearTokens() {
-  clearSessionCache();
-  localStorage.removeItem(TOKEN_KEY);
-  notifyAuthChange();
+export function broadcastSessionChange() {
+  if (typeof BroadcastChannel === 'undefined') return;
+  const channel = new BroadcastChannel('learninfy-session');
+  channel.postMessage({ source: sessionTabId });
+  channel.close();
 }

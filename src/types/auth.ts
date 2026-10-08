@@ -12,9 +12,6 @@ export interface SignInCredentials {
 }
 
 export interface AuthResponse {
-  token?: string;
-  access?: string;
-  refresh?: string;
   message?: string;
   error?: string;
   [key: string]: unknown;

@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { useQuery } from '@tanstack/react-query';
 import {
   fetchCurrentUser,
@@ -30,6 +31,8 @@ export async function getCurrentUser(options: { force?: boolean } = {}) {
       staleTime: options.force ? 0 : Infinity,
     });
   } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 401)
+      throw error;
     if (version !== getSessionVersion())
       throw new Error('Session changed.', { cause: error });
     throw error;

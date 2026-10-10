@@ -29,6 +29,7 @@ import CategoriesPage from './pages/categories/CategoriesPage';
 import LocalizationsPage from './pages/localizations/LocalizationsPage';
 import CouponsPage from './pages/coupons/CouponsPage';
 import CoursesPage from './pages/courses/CoursesPage';
+import CurriculumPage from './pages/curriculum/CurriculumPage';
 import './styles.css';
 
 function useAuthSession() {
@@ -105,7 +106,7 @@ function PublicRoute() {
   const from: unknown = location.state?.from;
   const destination =
     typeof from === 'string' &&
-    /^\/(?:users|profile|categories|coupons|courses|localizations)(?:\?|$)/.test(
+    /^\/(?:users|profile|categories|coupons|courses|sections|lectures|localizations)(?:\?|$)/.test(
       from,
     )
       ? from
@@ -153,6 +154,14 @@ export default function App() {
               <Route index element={<HomePage />} />
               <Route path="coupons" element={<CouponsPage />} />
               <Route path="courses" element={<CoursesPage />} />
+              <Route
+                path="sections"
+                element={<CurriculumPage key="sections" kind="sections" />}
+              />
+              <Route
+                path="lectures"
+                element={<CurriculumPage key="lectures" kind="lectures" />}
+              />
               <Route path="profile" element={<ProfilePage />} />
               <Route element={<AdminRoute />}>
                 <Route path="users" element={<UsersPage />} />

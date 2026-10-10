@@ -45,19 +45,23 @@ export default function AdminLayout() {
       ? instructorNavigation
       : [];
   const pageTitle =
-    location.pathname === '/courses'
-      ? 'Course management'
-      : location.pathname === '/coupons'
-        ? 'Coupon management'
-        : location.pathname === '/categories'
-          ? 'Category management'
-          : location.pathname === '/localizations'
-            ? 'Localization management'
-            : location.pathname === '/users'
-              ? 'Users management'
-              : location.pathname === '/profile'
-                ? 'My profile'
-                : 'Dashboard';
+    location.pathname === '/sections'
+      ? 'Section management'
+      : location.pathname === '/lectures'
+        ? 'Lecture management'
+        : location.pathname === '/courses'
+          ? 'Course management'
+          : location.pathname === '/coupons'
+            ? 'Coupon management'
+            : location.pathname === '/categories'
+              ? 'Category management'
+              : location.pathname === '/localizations'
+                ? 'Localization management'
+                : location.pathname === '/users'
+                  ? 'Users management'
+                  : location.pathname === '/profile'
+                    ? 'My profile'
+                    : 'Dashboard';
   const fullscreen = async () => {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();

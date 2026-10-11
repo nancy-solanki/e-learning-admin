@@ -61,7 +61,7 @@ export const adminNavigation: NavigationItem[] = [
     ],
   },
   { label: 'Ratings', icon: StarIcon },
-  { label: 'Wallets', icon: WalletIcon },
+  { label: 'Wallets', icon: WalletIcon, path: '/wallets' },
   { label: 'Coupons', icon: CouponIcon, path: '/coupons' },
   {
     label: 'Orders',
@@ -107,5 +107,5 @@ export const instructorNavigation: NavigationItem[] = [
     ],
   },
   { label: 'Ratings', icon: StarIcon },
-  { label: 'Wallets', icon: WalletIcon },
+  { label: 'Wallets', icon: WalletIcon, path: '/wallets' },
 ];

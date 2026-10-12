@@ -68,7 +68,7 @@ export const adminNavigation: NavigationItem[] = [
     icon: OrderIcon,
     submenu: ['All Orders', 'Paid Orders', 'Rejected Orders'],
   },
-  { label: 'Enrollments', icon: EnrollmentIcon },
+  { label: 'Enrollments', icon: EnrollmentIcon, path: '/enrollments' },
   { label: 'Other', icon: GearIcon, submenu: ['All Payment Transactions'] },
   {
     label: 'Site',

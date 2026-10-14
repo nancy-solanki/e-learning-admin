@@ -1,27 +1,88 @@
-# End-to-end coverage
+# End-to-end tests
 
-Run `yarn test:e2e` to build the app and run every scenario in desktop Chromium
-and the Pixel 7 mobile configuration. API-backed pages use intercepted responses;
-these tests do not verify a live backend.
+The suite uses Playwright and [playwright-bdd](https://vitalets.github.io/playwright-bdd/).
+Gherkin acceptance scenarios are compiled by `bddgen`. Focused regression tests
+cover additional errors, accessibility, session recovery, and API contracts.
+Each scenario has one owner: migrating it to a feature means removing its old
+spec implementation. Both suites run on desktop Chromium and a Pixel 7 viewport.
 
-| Routes                                                                   | Coverage file                                                      |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------ |
-| `/`, `/profile`, `/users`                                                | `workflows.spec.ts` (profile avatars also in `categories.spec.ts`) |
-| `/auth/sign-in`, `/auth/forgot-password`                                 | `workflows.spec.ts`                                                |
-| `/auth/activate-account/:uid/:token`, `/auth/reset-password/:uid/:token` | `workflows.spec.ts`                                                |
-| `/categories`                                                            | `categories.spec.ts`                                               |
-| `/coupons`                                                               | `coupons.spec.ts`                                                  |
-| `/localizations`                                                         | `localizations.spec.ts`                                            |
-| `/courses`, `/sections`, `/lectures`                                     | `preview-pages.spec.ts`                                            |
-| `/wallets`, `/enrollments`                                               | `preview-pages.spec.ts`                                            |
+## Structure
 
-`preview-pages.spec.ts` also checks all protected routes anonymously, instructor
-and learner access to the new preview pages, every supported lecture status deep
-link, and the unknown-route fallback. Preview workflows cover filtering, empty
-states, dialog interactions, temporary creation/editing, reload behavior, and
-filtered CSV contents where supported. The five preview pages currently use local
-sample data, so their tests intentionally do not assert backend persistence.
+```text
+tests/e2e/
+  features/    Business scenarios, backgrounds, and example tables
+  steps/       Given/When/Then bindings, organized by domain
+  pages/       Reusable browser actions and component interactions
+  fixtures/    Isolated browser setup, test data, and scenario state
+  support/     Session helpers and stateful API mocks
+  specs/       Additional domain-specific regression scenarios
+.features-gen/ Generated Playwright tests (ignored; never edit or commit)
+```
 
-Navigation labels without an implemented route (for example Ratings and Orders)
-are not separate pages. Add coverage here when those routes are implemented.
-Page coverage does not imply exhaustive coverage of every possible input or state.
+`features` describes intent; `steps` connects intent to actions and assertions.
+`pages` owns shared selectors and multi-control actions. `support` owns API
+setup. Expected outcomes remain explicit in features and steps. The fixtures
+are shared with native regression specs; all mutable state is test-scoped.
+
+## Commands
+
+```sh
+yarn install --frozen-lockfile
+yarn playwright install chromium
+yarn test:e2e:check              # Strict TypeScript checks for tests and config
+yarn test:e2e:generate           # Generate tests; undefined/ambiguous steps fail
+yarn test:e2e:list               # Regenerate and list both suites
+yarn test:e2e --workers=4        # Regenerate and run every desktop/mobile test
+yarn test:e2e --grep @courses   # Run a tagged feature on both devices
+yarn test:e2e --project=bdd-chromium
+yarn test:e2e --project=regression-mobile
+yarn test:e2e:report            # Open the HTML report
+```
+
+Always use `yarn test:e2e` after editing a feature or step so generated tests
+cannot become stale. The four projects have separate test directories:
+`bdd-chromium`, `bdd-mobile`, `regression-chromium`, and `regression-mobile`.
+They share one production build and preview server. A scenario runs once per
+device, never once in each suite.
+
+## Coverage ownership
+
+| Page / behavior                        | Acceptance feature      | Additional regression specs            |
+| -------------------------------------- | ----------------------- | -------------------------------------- |
+| Protected routes and unknown paths     | `access.feature`        | `session.spec.ts`                      |
+| Sign-in, activation, password recovery | `auth.feature`          | `auth.spec.ts`, `session.spec.ts`      |
+| Dashboard and responsive navigation    | `access.feature`        | `navigation.spec.ts`                   |
+| Profile preferences and passwords      | `profile.feature`       | `profile.spec.ts`                      |
+| Users and role filtering               | `users.feature`         | `users.spec.ts`, `invitations.spec.ts` |
+| Categories                             | `categories.feature`    | `categories.spec.ts`                   |
+| Coupons                                | `coupons.feature`       | —                                      |
+| Localizations                          | `localizations.feature` | `localizations.spec.ts`                |
+| Courses                                | `courses.feature`       | —                                      |
+| Sections and lecture status URLs       | `curriculum.feature`    | —                                      |
+| Wallets, enrollments, and CSV exports  | `records.feature`       | —                                      |
+
+The five preview pages use sample data, including temporary drafts and edits.
+Tests assert that changes reset on reload; they do not imply server persistence.
+API-backed pages use mocks, not a live backend. Navigation labels without routes
+(e.g. Orders and Ratings) are not implemented pages.
+
+## Adding or changing scenarios
+
+- Reuse shared steps and page actions before adding selectors or setup.
+- Use `Scenario Outline` and `Examples` for the same behavior across roles,
+  routes, statuses, or page types. Do not copy the scenario for each value.
+- Import `test`/`expect` or `Given`/`When`/`Then` from `fixtures/test.ts`.
+- Put stateful API setup in `support`; do not use module-level mutable state,
+  shared accounts, or dependencies on another scenario's results.
+- Use role/label locators and Playwright's retrying assertions. Start request
+  and download waits before the action that triggers them. Avoid fixed sleeps.
+- Register a mock for every API request. The shared fixture intercepts requests
+  to `/api/v1/`, supplies CSRF and anonymous-session defaults, and fails the test
+  on any unhandled endpoint instead of contacting a real backend.
+- Keep feature scenarios readable. Keep narrow failure/keyboard/protocol
+  regressions in `specs`, without repeating an existing acceptance scenario.
+
+CI checks E2E types, lint, formatting, unit coverage, then regenerates and runs
+all E2E tests. HTML reports, JUnit XML, failure screenshots, and retained traces
+are uploaded alongside unit coverage. CI limits workers to two, forbids
+`test.only`, and retries failures twice; local runs do not retry by default.

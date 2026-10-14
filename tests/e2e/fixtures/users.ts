@@ -1,0 +1,27 @@
+export const admin = {
+  id: '1',
+  email: 'ada@example.com',
+  first_name: 'Ada',
+  last_name: 'Lovelace',
+  full_name: 'Ada Lovelace',
+  username: 'ada',
+  phone_number: '',
+  bio: '',
+  role: ['admin'],
+  language: 'en',
+  avatar: null,
+  status: 'AC',
+  email_notifications: true,
+  public_profile: false,
+  search_engine_visibility: false,
+  share_learning_activity: false,
+};
+export const learner = {
+  ...admin,
+  id: '2',
+  email: 'grace@example.com',
+  first_name: 'Grace',
+  full_name: 'Grace Hopper',
+  username: 'grace',
+  role: ['learner'],
+};

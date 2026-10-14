@@ -24,6 +24,9 @@ jobs:
       - name: Type check
         run: yarn type-check
 
+      - name: E2E type check
+        run: yarn test:e2e:check
+
       - name: ESLint
         run: yarn lint
 
@@ -47,3 +50,4 @@ jobs:
           path: |
             coverage/
             test-results/
+            playwright-report/

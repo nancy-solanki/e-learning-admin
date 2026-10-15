@@ -14,6 +14,65 @@ Run `yarn dev` for development. Build with `yarn build`; serve `dist/`
 with a static host that falls back to `index.html` for frontend routes and
 routes `/api/` to the backend when using a same-origin API.
 
+## Docker and ECS production deployment
+
+Build the image with the public HTTPS API origin (no path):
+
+```sh
+docker build --build-arg VITE_API_ROOT_URL=https://api.example.com -t e-learning-admin:production .
+docker run --rm -p 8080:8080 e-learning-admin:production
+```
+
+Open `http://localhost:8080`. The image builds with Node.js 22 and serves only
+the production bundle using non-root Nginx on port 8080. Local `.env` files
+are excluded. Vite embeds the API URL in the JavaScript bundle: ECS runtime
+environment variables cannot change it, so rebuild for a different API origin.
+Build arguments must not contain secrets.
+
+For a same-origin API, omit the build argument and configure the Application
+Load Balancer to route `/api` and `/api/*` to the backend target group ahead
+of the frontend default rule. Nginx intentionally returns 404 for API requests
+that reach this container. Frontend routes such as `/users` fall back to
+`index.html`; hashed assets are cached for a year and HTML requires revalidation.
+
+To deploy on ECS:
+
+1. Build for the task's CPU architecture (`--platform linux/amd64` for X86_64
+   or `--platform linux/arm64` for ARM64), tag the image with a unique release
+   tag, and push it to your Amazon ECR repository.
+2. Reference that image in your ECS task definition with container port `8080`
+   and TCP protocol. For Fargate, use `awsvpc` networking and an ALB target
+   group with target type `ip`.
+3. Terminate HTTPS at the ALB, forward HTTP traffic to container port `8080`,
+   and set the target group's health check path to `/healthz` (HTTP 200).
+   Allow inbound container traffic from the ALB security group.
+4. Add the following container health check to the ECS task definition.
+   [ECS requires health checks in the task definition](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/healthcheck.html)
+   to monitor container health; the Dockerfile health check alone is insufficient.
+
+```json
+{
+  "healthCheck": {
+    "command": [
+      "CMD-SHELL",
+      "wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1"
+    ],
+    "interval": 30,
+    "timeout": 5,
+    "retries": 3,
+    "startPeriod": 10
+  }
+}
+```
+
+Configure the task execution role for ECR pulls and CloudWatch logging, and
+use the `awslogs` log driver to collect Nginx stdout/stderr. Nginx needs a
+writable `/tmp`; mount writable storage there if using a read-only root
+filesystem. The health endpoint checks the frontend server, not the API.
+This Docker setup does not provision AWS resources or automatically deploy CI
+builds. Configure backend CORS, CSRF, and cookies for the production frontend
+origin as described below.
+
 ## Checks
 
 - `yarn build`: TypeScript and production bundle.

@@ -1,0 +1,17 @@
+node_modules
+dist
+.git
+.github
+.husky
+.aws
+.agents
+.codex
+.env
+.env.*
+coverage
+playwright-report
+test-results
+.features-gen
+tests
+*.log
+README.md

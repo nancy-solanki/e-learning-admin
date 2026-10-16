@@ -32,6 +32,7 @@ import CoursesPage from './pages/courses/CoursesPage';
 import CurriculumPage from './pages/curriculum/CurriculumPage';
 import WalletsPage from './pages/wallets/WalletsPage';
 import EnrollmentsPage from './pages/enrollments/EnrollmentsPage';
+import NotFoundPage from './pages/NotFoundPage';
 import './styles.css';
 
 function useAuthSession() {
@@ -190,9 +191,8 @@ export default function App() {
             path="/auth/reset-password/:uid/:token"
             element={<ResetPasswordPage kind="reset" />}
           />
-
-          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   );

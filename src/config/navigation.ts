@@ -32,17 +32,7 @@ export const mainNavigation: NavigationItem[] = [
 export const adminNavigation: NavigationItem[] = [
   { label: 'Users', icon: UsersIcon, path: '/users' },
   { label: 'Category', icon: CategoryIcon, path: '/categories' },
-  {
-    label: 'Courses',
-    icon: BookIcon,
-    submenu: [
-      { label: 'All Courses', path: '/courses' },
-      'Pending Courses',
-      'Rejected Courses',
-      'Published Courses',
-      'Review Courses',
-    ],
-  },
+  { label: 'Courses', icon: BookIcon, path: '/courses' },
   {
     label: 'Sections',
     icon: LayersIcon,
@@ -83,15 +73,7 @@ export const adminNavigation: NavigationItem[] = [
 
 export const instructorNavigation: NavigationItem[] = [
   { label: 'Coupons', icon: CouponIcon, path: '/coupons' },
-  {
-    label: 'Courses',
-    icon: BookIcon,
-    submenu: [
-      { label: 'All Courses', path: '/courses' },
-      'Published Courses',
-      'Review Courses',
-    ],
-  },
+  { label: 'Courses', icon: BookIcon, path: '/courses' },
   {
     label: 'Sections',
     icon: LayersIcon,

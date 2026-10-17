@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { apiErrorMessage, apiFieldErrors } from '../../api/errors';
 import type {
@@ -180,15 +182,23 @@ export default function LocalizationsPage() {
   const [search, setSearch] = useState('');
   const [languageName, setLanguageName] = useState('');
   const [country, setCountry] = useState('');
-  const [query, setQuery] = useState({
-    search: '',
-    language_name: '',
-    country: '',
-  });
-  const previousInputs = useRef({ search: '', languageName: '', country: '' });
+  const searchValues = useMemo(
+    () => ({
+      search: search.trim(),
+      language_name: languageName.trim(),
+      country: country.trim(),
+    }),
+    [search, languageName, country],
+  );
+  const query = useDebouncedValue(searchValues);
   const [ordering, setOrdering] = useState('-created_at,-id');
   const [status, setStatus] = useState<'all' | 'active' | 'deleted'>('all');
   const [page, setPage] = useState(1);
+  const [previousQuery, setPreviousQuery] = useState(query);
+  if (previousQuery !== query) {
+    setPreviousQuery(query);
+    setPage(1);
+  }
   const pageSize = 20;
   const filters = {
     ...(query.search ? { search: query.search } : {}),
@@ -220,25 +230,6 @@ export default function LocalizationsPage() {
         'Unable to load localizations. Please try again.',
       )
     : '';
-
-  useEffect(() => {
-    if (
-      previousInputs.current.search === search &&
-      previousInputs.current.languageName === languageName &&
-      previousInputs.current.country === country
-    )
-      return;
-    previousInputs.current = { search, languageName, country };
-    const timer = setTimeout(() => {
-      setQuery({
-        search: search.trim(),
-        language_name: languageName.trim(),
-        country: country.trim(),
-      });
-      setPage(1);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search, languageName, country]);
 
   async function edit(localization: Localization) {
     setOpening(localization.id);

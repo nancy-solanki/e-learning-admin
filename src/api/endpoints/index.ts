@@ -27,6 +27,7 @@ export const ENDPOINTS = {
     CHANGE_PASSWORD: '/api/v1/auth/change-password/',
   },
   COURSE: {
+    ADMIN_LIST: '/api/v1/course/admin/all/',
     LIST: '/api/v1/course/',
     DETAIL: (slug: string) => `/api/v1/course/${encodeURIComponent(slug)}/`,
     CATEGORY_COURSES: (slug: string) =>

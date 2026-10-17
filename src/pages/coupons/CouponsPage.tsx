@@ -1,3 +1,4 @@
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Navigate } from 'react-router-dom';
@@ -461,11 +462,16 @@ export default function CouponsPage() {
           .replace(/^role_/, '') === 'instructor',
     );
   const [search, setSearch] = useState('');
-  const [query, setQuery] = useState('');
+  const query = useDebouncedValue(search.trim());
   const [type, setType] = useState('');
   const [status, setStatus] = useState('current');
   const [ordering, setOrdering] = useState('-created_at');
   const [page, setPage] = useState(1);
+  const [previousQuery, setPreviousQuery] = useState(query);
+  if (previousQuery !== query) {
+    setPreviousQuery(query);
+    setPage(1);
+  }
   const [editor, setEditor] = useState<{ coupon: Coupon | null } | null>(null);
   const [target, setTarget] = useState<Coupon | null>(null);
   const [pending, setPending] = useState(false);
@@ -487,13 +493,7 @@ export default function CouponsPage() {
     enabled: allowed,
   });
   const data = coupons.data;
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setQuery(search.trim());
-      setPage(1);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search]);
+
   async function refresh() {
     if (version === getSessionVersion())
       await queryClient.invalidateQueries({ queryKey: ['coupons'] });

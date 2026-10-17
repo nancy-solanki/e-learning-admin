@@ -1,3 +1,4 @@
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import {
@@ -226,6 +227,7 @@ export default function CurriculumPage({
   const { data: user } = useCurrentUser();
   const [entries, setEntries] = useState(() => samples(lecture));
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search.trim());
   const [course, setCourse] = useState('');
   const [params, setParams] = useSearchParams();
   const status = lecture ? (params.get('status') ?? '') : '';
@@ -247,7 +249,7 @@ export default function CurriculumPage({
       (!status || e.status === status) &&
       `${e.title} ${e.course} ${lecture ? e.section : ''}`
         .toLowerCase()
-        .includes(search.toLowerCase()),
+        .includes(debouncedSearch.toLowerCase()),
   );
   const reset = () => {
     setSearch('');

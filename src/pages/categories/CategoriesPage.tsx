@@ -1,3 +1,4 @@
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { Input, Textarea, Field } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
@@ -278,9 +279,14 @@ function CategoryEditor({
 
 export default function CategoriesPage() {
   const [search, setSearch] = useState('');
-  const [query, setQuery] = useState('');
+  const query = useDebouncedValue(search.trim());
   const [ordering, setOrdering] = useState('-created_at');
   const [page, setPage] = useState(1);
+  const [previousQuery, setPreviousQuery] = useState(query);
+  if (previousQuery !== query) {
+    setPreviousQuery(query);
+    setPage(1);
+  }
   const categoriesQuery = useCategories({
     search: query,
     ordering,
@@ -303,13 +309,7 @@ export default function CategoriesPage() {
   const [deleteError, setDeleteError] = useState('');
   const [notice, setNotice] = useState('');
   const [opening, setOpening] = useState<string | null>(null);
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setQuery(search.trim());
-      setPage(1);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search]);
+
   async function edit(category: Category) {
     setOpening(category.id);
     setNotice('');

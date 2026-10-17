@@ -1,3 +1,4 @@
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useEffect, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import {
@@ -156,6 +157,7 @@ function TransactionDialog({
 export default function WalletsPage() {
   const { data: user } = useCurrentUser();
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search.trim());
   const [type, setType] = useState('');
   const [status, setStatus] = useState('');
   const [selected, setSelected] = useState<Transaction | null>(null);
@@ -173,7 +175,9 @@ export default function WalletsPage() {
     (t) =>
       (!type || t.type === type) &&
       (!status || t.status === status) &&
-      `${t.description} ${t.id}`.toLowerCase().includes(search.toLowerCase()),
+      `${t.description} ${t.id}`
+        .toLowerCase()
+        .includes(debouncedSearch.toLowerCase()),
   );
   const earnings = transactions
     .filter((t) => t.type === 'Earning')

@@ -1,3 +1,4 @@
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useEffect, useRef, useState } from 'react';
 import {
   CloseIcon,
@@ -170,6 +171,7 @@ function EnrollmentDialog({
 }
 export default function EnrollmentsPage() {
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search.trim());
   const [course, setCourse] = useState('');
   const [status, setStatus] = useState('');
   const [selected, setSelected] = useState<Enrollment | null>(null);
@@ -179,7 +181,7 @@ export default function EnrollmentsPage() {
       (!status || entry.status === status) &&
       `${entry.student} ${entry.email} ${entry.course} ${entry.id}`
         .toLowerCase()
-        .includes(search.toLowerCase()),
+        .includes(debouncedSearch.toLowerCase()),
   );
   const exportCsv = () => {
     const rows = [

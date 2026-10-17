@@ -1,3 +1,4 @@
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { Select } from '../../components/ui/Select';
 import { avatarUrl } from '../../lib/avatar';
 import { ConfirmationDialog } from '../../components/ui/ConfirmationDialog';
@@ -141,14 +142,7 @@ export default function UsersPage() {
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [workingId, setWorkingId] = useState<string | null>(null);
 
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  useEffect(() => {
-    const timer = setTimeout(
-      () => setDebouncedSearch(search.trim()),
-      search.trim() ? 300 : 0,
-    );
-    return () => clearTimeout(timer);
-  }, [search]);
+  const debouncedSearch = useDebouncedValue(search.trim());
   const usersQuery = useUsers({
     search: debouncedSearch,
     ordering,

@@ -10,7 +10,13 @@ import {
   GlobeIcon,
 } from '../../components/icons/AdminIcons';
 import { useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import {
+  Link,
+  NavLink,
+  Outlet,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
 import { clearSession } from '../../state/session';
 import { useCurrentUser } from '../../state/profile';
 import { isAdmin } from '../../lib/permissions';
@@ -44,6 +50,14 @@ export default function AdminLayout() {
         )
       ? instructorNavigation
       : [];
+  function isSubmenuActive(path: string) {
+    const [pathname, search = ''] = path.split('?');
+    return (
+      pathname === location.pathname &&
+      new URLSearchParams(search).get('status') ===
+        new URLSearchParams(location.search).get('status')
+    );
+  }
   const pageTitle =
     location.pathname === '/enrollments'
       ? 'Enrollment management'
@@ -150,7 +164,7 @@ export default function AdminLayout() {
                   submenu.some(
                     (item) =>
                       typeof item !== 'string' &&
-                      item.path === location.pathname,
+                      item.path.split('?')[0] === location.pathname,
                   ) || undefined
                 }
               >
@@ -166,21 +180,24 @@ export default function AdminLayout() {
                         {item}
                       </div>
                     ) : (
-                      <NavLink
+                      <Link
                         key={item.path}
                         to={item.path}
-                        className={({ isActive }) =>
-                          `block py-2 text-xs ${isActive ? 'font-semibold text-white' : 'text-[#9299b1] hover:text-white'}`
+                        aria-current={
+                          isSubmenuActive(item.path) ? 'page' : undefined
                         }
+                        className={`block py-2 text-xs ${isSubmenuActive(item.path) ? 'font-semibold text-white' : 'text-[#9299b1] hover:text-white'}`}
                         onClick={() => setMenuOpen(false)}
                       >
                         {item.label}
-                      </NavLink>
+                      </Link>
                     ),
                   )}
-                  <span className="mt-1 inline-block rounded bg-white/5 px-2 py-1 text-[10px] text-[#9299b1]">
-                    Coming soon
-                  </span>
+                  {submenu.some((item) => typeof item === 'string') && (
+                    <span className="mt-1 inline-block rounded bg-white/5 px-2 py-1 text-[10px] text-[#9299b1]">
+                      Coming soon
+                    </span>
+                  )}
                 </div>
               </details>
             ) : (

@@ -1,3 +1,4 @@
+import { CourseImage } from '../../components/courses/CourseImage';
 import { AsyncSelect } from '../../components/ui/AsyncSelect';
 import {
   listCategoryOptions,
@@ -69,6 +70,11 @@ function CourseDialog({
           <CloseIcon className="size-5" />
         </button>
       </div>
+      <CourseImage
+        src={course.thumbnail?.url}
+        title={course.title}
+        className="mb-5 rounded-xl"
+      />
       <p className="mb-5 whitespace-pre-wrap">
         {course.long_description || course.short_description}
       </p>
@@ -412,48 +418,51 @@ export default function CoursesPage() {
             {query.data.results.map((course) => (
               <article
                 key={course.id}
-                className="flex flex-col rounded-xl border border-[#e6e7ef] bg-white p-5"
+                className="flex flex-col overflow-hidden rounded-xl border border-[#e6e7ef] bg-white"
               >
-                <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
-                  <BookIcon className="mr-auto size-6 text-[#8062bc]" />
-                  <span className="rounded bg-violet-50 px-2 py-1">
-                    {course.status}
-                  </span>
-                  {course.deleted_at && (
-                    <span className="rounded bg-red-50 px-2 py-1 text-red-700">
-                      Deleted
+                <CourseImage src={course.thumbnail?.url} title={course.title} />
+                <div className="flex flex-1 flex-col p-5">
+                  <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
+                    <BookIcon className="mr-auto size-6 text-[#8062bc]" />
+                    <span className="rounded bg-violet-50 px-2 py-1">
+                      {course.status}
                     </span>
-                  )}
-                  {course.is_best_seller && (
-                    <span className="rounded bg-amber-50 px-2 py-1">
-                      Best seller
-                    </span>
-                  )}
+                    {course.deleted_at && (
+                      <span className="rounded bg-red-50 px-2 py-1 text-red-700">
+                        Deleted
+                      </span>
+                    )}
+                    {course.is_best_seller && (
+                      <span className="rounded bg-amber-50 px-2 py-1">
+                        Best seller
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="mb-2 text-lg font-bold">
+                    <button
+                      className="text-left hover:text-[#7054d8]"
+                      onClick={() => setSelected(course)}
+                    >
+                      {course.title}
+                    </button>
+                  </h3>
+                  <p className="mb-4 line-clamp-3 text-sm text-slate-500">
+                    {course.short_description}
+                  </p>
+                  <p className="mb-4 text-xs text-slate-500">
+                    {course.total_articles} articles ·{' '}
+                    {course.student_count.toLocaleString()} students
+                  </p>
+                  <footer className="mt-auto flex items-center justify-between border-t border-slate-100 pt-4">
+                    <strong>{price(course)}</strong>
+                    <button
+                      className="text-sm text-[#8062bc]"
+                      onClick={() => setSelected(course)}
+                    >
+                      View course ↗
+                    </button>
+                  </footer>
                 </div>
-                <h3 className="mb-2 text-lg font-bold">
-                  <button
-                    className="text-left hover:text-[#7054d8]"
-                    onClick={() => setSelected(course)}
-                  >
-                    {course.title}
-                  </button>
-                </h3>
-                <p className="mb-4 line-clamp-3 text-sm text-slate-500">
-                  {course.short_description}
-                </p>
-                <p className="mb-4 text-xs text-slate-500">
-                  {course.total_articles} articles ·{' '}
-                  {course.student_count.toLocaleString()} students
-                </p>
-                <footer className="mt-auto flex items-center justify-between border-t border-slate-100 pt-4">
-                  <strong>{price(course)}</strong>
-                  <button
-                    className="text-sm text-[#8062bc]"
-                    onClick={() => setSelected(course)}
-                  >
-                    View course ↗
-                  </button>
-                </footer>
               </article>
             ))}
           </div>

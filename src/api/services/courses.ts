@@ -55,7 +55,7 @@ export interface AdminCourse {
   requirements: string;
   total_hours: string;
   total_articles: number;
-  thumbnail: string | null;
+  thumbnail: { id: string; name: string; url: string } | null;
   instructor: string | null;
   categories: string[];
   tags: string[];

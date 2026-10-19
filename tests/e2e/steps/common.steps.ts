@@ -71,3 +71,7 @@ When(
     await controls.choose(label, option, page.getByRole('dialog'));
   },
 );
+
+When('I follow the link {string}', async ({ page }, name: string) => {
+  await page.getByRole('link', { name, exact: true }).click();
+});

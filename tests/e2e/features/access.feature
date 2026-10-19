@@ -32,7 +32,6 @@ Feature: Route access and session boundaries
 
     Examples:
       | path      | heading   |
-      | /courses  | Courses.  |
       | /sections | Sections. |
       | /lectures | Lectures. |
       | /wallets  | Wallet.   |
@@ -48,8 +47,21 @@ Feature: Route access and session boundaries
       | instructor |
       | learner    |
 
-  Scenario: Unknown routes return to the dashboard
+  Scenario: Unknown routes show a helpful 404 with a route home
     Given I am signed in as admin
     When I open "/unknown-page"
+    Then I see the heading "Page not found"
+    When I follow the link "Back to home"
     Then the URL is "/"
     And I see the heading "Welcome to your dashboard"
+
+  Scenario Outline: <role> cannot access the admin course catalog
+    Given I am signed in as <role>
+    When I open "/courses"
+    Then the URL is "/"
+    And I see the heading "Welcome to your dashboard"
+
+    Examples:
+      | role       |
+      | instructor |
+      | learner    |

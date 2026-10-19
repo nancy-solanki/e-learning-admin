@@ -1,12 +1,21 @@
-name: CI
+name: CI/CD
 
 on:
   push:
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -46,8 +55,105 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
+          retention-days: 14
           name: test-reports
           path: |
             coverage/
             test-results/
             playwright-report/
+
+  container:
+    name: Container smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production container
+        run: docker build --tag e-learning-admin:ci .
+      - name: Check production server
+        run: bash scripts/smoke-container.sh e-learning-admin:ci
+
+  deploy:
+    name: Deploy production
+    needs: [test, container]
+    if: >-
+      github.event_name != 'pull_request' &&
+      github.ref == 'refs/heads/main' &&
+      vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+      ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
+      ECS_SERVICE: ${{ vars.ECS_SERVICE }}
+      ECS_CONTAINER_NAME: ${{ vars.ECS_CONTAINER_NAME }}
+      VITE_API_ROOT_URL: ${{ vars.VITE_API_ROOT_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate deployment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in AWS_REGION AWS_ROLE_ARN ECR_REPOSITORY ECS_CLUSTER ECS_SERVICE ECS_CONTAINER_NAME; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Missing production variable $name"
+              exit 1
+            fi
+          done
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Read the service's current task definition
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" > service.json
+          jq -e '.failures == [] and (.services | length == 1) and .services[0].deploymentController.type == "ECS"' service.json
+          task_arn=$(jq -r '.services[0].taskDefinition' service.json)
+          aws ecs describe-task-definition --task-definition "$task_arn" --query taskDefinition > task-definition.json
+          jq -e '(.runtimePlatform.cpuArchitecture // "X86_64") == "X86_64"' task-definition.json
+          jq -e --arg name "$ECS_CONTAINER_NAME" '.containerDefinitions[] | select(.name == $name)' task-definition.json > /dev/null
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and smoke test release image
+        id: image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="$ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          docker build --platform linux/amd64 --build-arg "VITE_API_ROOT_URL=$VITE_API_ROOT_URL" --tag "$image" .
+          bash scripts/smoke-container.sh "$image"
+          docker push "$image"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+      - name: Update container image in task definition
+        id: task
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.ECS_CONTAINER_NAME }}
+          image: ${{ steps.image.outputs.image }}
+      - name: Deploy and wait for healthy service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+      - name: Record release
+        env:
+          RELEASE_IMAGE: ${{ steps.image.outputs.image }}
+        run: printf 'Deployed image `%s` to ECS service `%s`.\n' "$RELEASE_IMAGE" "$ECS_SERVICE" >> "$GITHUB_STEP_SUMMARY"

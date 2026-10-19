@@ -69,9 +69,9 @@ Configure the task execution role for ECR pulls and CloudWatch logging, and
 use the `awslogs` log driver to collect Nginx stdout/stderr. Nginx needs a
 writable `/tmp`; mount writable storage there if using a read-only root
 filesystem. The health endpoint checks the frontend server, not the API.
-This Docker setup does not provision AWS resources or automatically deploy CI
-builds. Configure backend CORS, CSRF, and cookies for the production frontend
-origin as described below.
+The CI/CD workflow can deploy to an existing ECS service after the setup below.
+It does not provision AWS resources. Configure backend CORS, CSRF, and cookies
+for the production frontend origin as described below.
 
 ## Checks
 
@@ -88,6 +88,70 @@ frontend workflows, not backend authorization or production infrastructure.
 Both test runners fail when no tests are found. CI runs coverage, static
 checks, and browser tests including a production build.
 
+## CI/CD with GitHub Actions
+
+`.github/workflows/ci.yml` runs on pushes, pull requests, and manual dispatches.
+The `test` job checks application and E2E types, lint, formatting, unit coverage,
+and all desktop/mobile Playwright scenarios. Reports are retained for 14 days,
+including on failure. The independent `Container smoke test` job builds the
+Dockerfile and checks health, non-root execution, SPA deep links, API isolation,
+and JavaScript delivery using `scripts/smoke-container.sh`.
+
+The `Deploy production` job requires both jobs to pass, the `main` branch, and
+the **repository-level** Actions variable `DEPLOY_ENABLED=true`. Pull requests
+never deploy. Deployment uses GitHub OIDC, so no AWS access keys are stored.
+The implementation follows the official [AWS credentials action](https://github.com/aws-actions/configure-aws-credentials)
+and [ECS deployment action](https://github.com/aws-actions/amazon-ecs-deploy-task-definition).
+
+One-time setup:
+
+1. Create the ECR repository and an existing, healthy ECS service using the
+   `ECS` rolling deployment controller and an X86_64 Linux task definition.
+   Configure its frontend container, port 8080, health checks, ALB, logs, and
+   roles as described above. ARM64 services are rejected by this workflow.
+2. Create the GitHub environment `production`. Restrict its deployment branch
+   to `main`; configure required reviewers if your release process needs them.
+3. Configure AWS's GitHub OIDC provider with audience `sts.amazonaws.com` and
+   an IAM role whose trust policy restricts `sub` to
+   `repo:OWNER/REPOSITORY:environment:production`.
+4. Grant that role ECR authorization and push permissions for the target
+   repository, ECS service/task-definition read permissions,
+   `ecs:RegisterTaskDefinition`, and `ecs:UpdateService` for the target service.
+   Grant `iam:PassRole` only for the execution/task roles in that task definition.
+   See the linked AWS action documentation for policy examples.
+5. Add these GitHub variables to the `production` environment:
+
+   | Variable             | Value                                                      |
+   | -------------------- | ---------------------------------------------------------- |
+   | `AWS_REGION`         | Region containing the service and ECR repository           |
+   | `AWS_ROLE_ARN`       | OIDC deployment role ARN                                   |
+   | `ECR_REPOSITORY`     | Existing repository name, without registry hostname        |
+   | `ECS_CLUSTER`        | Existing cluster name                                      |
+   | `ECS_SERVICE`        | Existing service name                                      |
+   | `ECS_CONTAINER_NAME` | Frontend container name in the task definition             |
+   | `VITE_API_ROOT_URL`  | Public HTTPS API origin; empty for ALB same-origin routing |
+
+6. Set the repository Actions variable `DEPLOY_ENABLED` to `true` when ready.
+   Push to `main` or manually run the workflow on `main` to test and deploy.
+   Require the `test` and `Container smoke test` checks in branch protection.
+
+The deployment reads the service's current task definition, preserves its
+configuration, builds and smoke-tests the release image with the production
+API origin, pushes a unique commit/run/attempt tag to ECR, and replaces only
+that container's image. It waits for ECS service stability and records the
+image in the run summary. Deployments are serialized and are not cancelled
+mid-rollout. Enable ECS deployment circuit-breaker rollback on the service;
+the workflow itself does not configure automatic rollback. To roll back
+manually, update the service to its previous healthy task-definition revision.
+Disable `DEPLOY_ENABLED` before doing so if new releases must be paused.
+
+Local container verification:
+
+```sh
+docker build -t e-learning-admin:ci .
+bash scripts/smoke-container.sh e-learning-admin:ci
+```
+
 ## Supported features and release verification
 
 Home is a static welcome page. The header account dropdown contains Profile
@@ -98,8 +162,7 @@ User search, status, and ordering are sent to the backend. Listing follows
 same-origin pagination links within those results. Role tabs currently filter
 those results locally pending the backend role-filter contract.
 Status and admin-privilege updates use PUT; confirm this contract in staging.
-CI validates changes but does not deploy them. Deployment configuration needs
-a target hosting provider, environment, and credentials.
+Production deployment is opt-in and runs only after all CI jobs pass on `main`.
 
 Before deploying, verify the API contract in staging, especially account
 activation/reset, refresh rotation, user updates, and logout revocation.

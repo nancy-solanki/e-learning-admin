@@ -97,13 +97,6 @@ export class PreviewPages {
       .getByRole('button', { name: 'Cancel', exact: true })
       .click();
   }
-  async createCourse() {
-    await this.dialog.getByLabel('Course title').fill('E2E course');
-    await this.dialog.getByLabel('Description').fill('A test learning journey');
-    await this.dialog.getByLabel('Category').selectOption('Development');
-    await this.dialog.getByLabel('Price (USD)').fill('42.50');
-    await this.dialog.getByRole('button', { name: 'Create draft' }).click();
-  }
   async filterRecords(kind: string) {
     const config = recordConfig(kind);
     await this.controls.choose(config.statusFilter, config.status);

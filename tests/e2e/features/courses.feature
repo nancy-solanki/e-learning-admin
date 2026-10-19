@@ -1,35 +1,40 @@
-@preview @courses
-Feature: Course catalog preview
+@courses
+Feature: Admin course catalog
   Background:
     Given I am signed in as admin
+    And the course service has 21 courses
     When I open "/courses"
 
-  Scenario: Filter and sort courses and inspect a course
-    Then I see 6 of 6 courses
-    When I choose "Design" from "Category"
-    Then I see 2 of 6 courses
-    When I filter courses to drafts
-    Then I see 1 of 6 courses
-    When I search "courses" for "no matching course"
-    Then I see the heading "No courses found"
-    When I clear the filters
-    And I choose "Title: A–Z" from "Sort courses"
-    Then the first course is "Brand identity: Make your mark"
+  Scenario: Browse pages and inspect course details
+    Then the course pagination shows "Page 1 of 2 · 21 courses"
+    When I open the next course page
+    Then the course pagination shows "Page 2 of 2 · 21 courses"
+    And the first course is "Course 21"
     When I view the first course
-    Then the course dialog describes "Brand identity: Make your mark"
-    When I return to courses
-    Then the dialog is closed
-
-  Scenario: Course drafts validate required fields and are temporary
-    When I start a course draft
-    And I submit an empty course draft
-    Then the course title is required
-    When I create a course draft with a price of 42.50
-    Then the dialog is closed
-    And the new course is a draft
-    When I view the new course
-    Then the course dialog shows the draft price
+    Then the course dialog describes "Course 21"
+    And the dialog shows "Complete lessons with hands-on exercises."
     When I press Escape
-    And I reload the page
-    Then I see 6 of 6 courses
-    And the temporary course is gone
+    Then the dialog is closed
+    When I reload the page
+    Then the course pagination shows "Page 2 of 2 · 21 courses"
+
+  Scenario: Search, empty results and server sorting
+    When I choose "Title: Z–A" from "Sort courses"
+    Then the first course is "Course 21"
+    When I search "courses" for "no matching course"
+    Then I see "No courses found. Try another search or adjust your filters."
+    When I search "courses" for "Course 01"
+    Then the first course is "Course 01"
+    And the course pagination shows "Page 1 of 1 · 1 courses"
+    And the page fits the viewport
+
+  Scenario: Applied status filters survive reload and can be cleared
+    When I open course filters
+    And I choose "Draft" from "Status" in the dialog
+    And I apply course filters
+    Then the first course is "Course 01"
+    And the course pagination shows "Page 1 of 1 · 1 courses"
+    When I reload the page
+    Then the course pagination shows "Page 1 of 1 · 1 courses"
+    When I clear the filters
+    Then the course pagination shows "Page 1 of 2 · 21 courses"

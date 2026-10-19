@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures/test';
+import { mockCourses } from '../support/courses-api';
 import { session } from '../support/session';
 
 test('static welcome and responsive navigation', async ({
@@ -25,8 +26,10 @@ test('static welcome and responsive navigation', async ({
     fullPage: true,
   });
   await controls.openNavigation();
-  await page.getByText('Courses', { exact: true }).click();
-  await expect(page.getByText('All Courses', { exact: true })).toBeVisible();
+  await mockCourses(page);
+  await page.getByRole('link', { name: 'Courses', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Courses.' })).toBeVisible();
+  await controls.openNavigation();
   await page.route('**/api/v1/users/', (route) => route.fulfill({ json: [] }));
   await page.getByRole('link', { name: 'Users', exact: true }).click();
   await expect(

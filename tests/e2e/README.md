@@ -55,13 +55,13 @@ device, never once in each suite.
 | Profile preferences and passwords      | `profile.feature`       | `profile.spec.ts`                      |
 | Users and role filtering               | `users.feature`         | `users.spec.ts`, `invitations.spec.ts` |
 | Categories                             | `categories.feature`    | `categories.spec.ts`                   |
-| Coupons                                | `coupons.feature`       | —                                      |
+| Coupons                                | `coupons.feature`       | `coupons.spec.ts`                      |
 | Localizations                          | `localizations.feature` | `localizations.spec.ts`                |
-| Courses                                | `courses.feature`       | —                                      |
+| Courses                                | `courses.feature`       | `courses.spec.ts`                      |
 | Sections and lecture status URLs       | `curriculum.feature`    | —                                      |
 | Wallets, enrollments, and CSV exports  | `records.feature`       | —                                      |
 
-The five preview pages use sample data, including temporary drafts and edits.
+The four preview pages use sample data, including temporary drafts and edits.
 Tests assert that changes reset on reload; they do not imply server persistence.
 API-backed pages use mocks, not a live backend. Navigation labels without routes
 (e.g. Orders and Ratings) are not implemented pages.
@@ -86,3 +86,7 @@ CI checks E2E types, lint, formatting, unit coverage, then regenerates and runs
 all E2E tests. HTML reports, JUnit XML, failure screenshots, and retained traces
 are uploaded alongside unit coverage. CI limits workers to two, forbids
 `test.only`, and retries failures twice; local runs do not retry by default.
+
+Course coverage includes server pagination, search, sorting, URL filters, option IDs,
+explicit boolean filters, retryable failures, detail dialogs, and admin-only access.
+Coupon regressions cover list recovery and failed saves without losing the draft.

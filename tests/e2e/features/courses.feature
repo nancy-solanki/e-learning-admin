@@ -5,18 +5,17 @@ Feature: Admin course catalog
     And the course service has 21 courses
     When I open "/courses"
 
-  Scenario: Browse pages and inspect course details
-    Then the course pagination shows "Page 1 of 2 · 21 courses"
-    When I open the next course page
-    Then the course pagination shows "Page 2 of 2 · 21 courses"
-    And the first course is "Course 21"
+  Scenario: Scroll through courses and inspect course details
+    Then the course count shows "Showing 20 of 21 courses"
+    When I scroll to the end of the courses
+    Then the course count shows "Showing 21 of 21 courses"
+    And the first course is "Course 01"
     When I view the first course
-    Then the course dialog describes "Course 21"
+    Then the course dialog describes "Course 01"
     And the dialog shows "Complete lessons with hands-on exercises."
     When I press Escape
     Then the dialog is closed
-    When I reload the page
-    Then the course pagination shows "Page 2 of 2 · 21 courses"
+
 
   Scenario: Search, empty results and server sorting
     When I choose "Title: Z–A" from "Sort courses"
@@ -25,7 +24,7 @@ Feature: Admin course catalog
     Then I see "No courses found. Try another search or adjust your filters."
     When I search "courses" for "Course 01"
     Then the first course is "Course 01"
-    And the course pagination shows "Page 1 of 1 · 1 courses"
+    And the course count shows "Showing 1 of 1 courses"
     And the page fits the viewport
 
   Scenario: Applied status filters survive reload and can be cleared
@@ -33,8 +32,8 @@ Feature: Admin course catalog
     And I choose "Draft" from "Status" in the dialog
     And I apply course filters
     Then the first course is "Course 01"
-    And the course pagination shows "Page 1 of 1 · 1 courses"
+    And the course count shows "Showing 1 of 1 courses"
     When I reload the page
-    Then the course pagination shows "Page 1 of 1 · 1 courses"
+    Then the course count shows "Showing 1 of 1 courses"
     When I clear the filters
-    Then the course pagination shows "Page 1 of 2 · 21 courses"
+    Then the course count shows "Showing 20 of 21 courses"

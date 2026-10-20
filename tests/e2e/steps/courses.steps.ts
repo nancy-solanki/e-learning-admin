@@ -16,13 +16,11 @@ Then(
     await expect(page.getByRole('dialog', { name: title })).toBeVisible();
   },
 );
-Then('the course pagination shows {string}', async ({ page }, text: string) => {
-  await expect(
-    page.getByRole('navigation', { name: 'Course pagination' }),
-  ).toContainText(text);
+Then('the course count shows {string}', async ({ page }, text: string) => {
+  await expect(page.getByRole('status')).toContainText(text);
 });
-When('I open the next course page', async ({ page }) => {
-  await page.getByRole('button', { name: 'Next', exact: true }).click();
+When('I scroll to the end of the courses', async ({ page }) => {
+  await page.getByRole('status').scrollIntoViewIfNeeded();
 });
 When('I open course filters', async ({ page }) => {
   await page.getByRole('button', { name: /^Filters/ }).click();

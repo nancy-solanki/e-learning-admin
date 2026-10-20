@@ -6,7 +6,7 @@ import {
 } from '../../api/services/options';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { BookIcon, CloseIcon } from '../../components/icons/AdminIcons';
 import { Button } from '../../components/ui/Button';
@@ -18,6 +18,7 @@ import { apiErrorMessage } from '../../api/errors';
 import {
   listAdminCourses,
   type AdminCourse,
+  type AdminCoursePage,
   type AdminCourseFilters,
   type CourseStatus,
 } from '../../api/services/courses';
@@ -275,24 +276,6 @@ export default function CoursesPage() {
     const value = params.get(key);
     if (value === 'true' || value === 'false') filters[key] = value === 'true';
   }
-  const requestedPage = Number(params.get('page') ?? 1);
-  const page =
-    Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
-  function setPage(value: number | ((previous: number) => number)) {
-    setParams(
-      (current) => {
-        const next = new URLSearchParams(current);
-        const number =
-          typeof value === 'function'
-            ? value(Number(current.get('page') ?? 1))
-            : value;
-        if (number === 1) next.delete('page');
-        else next.set('page', String(number));
-        return next;
-      },
-      { replace: true },
-    );
-  }
   function setFilters(next: AdminCourseFilters) {
     setParams(
       Object.fromEntries(
@@ -305,20 +288,55 @@ export default function CoursesPage() {
   const [ordering, setOrdering] = useState('');
   const search = useDebouncedValue(searchInput.trim());
   const [selected, setSelected] = useState<AdminCourse | null>(null);
-  const query = useQuery({
-    queryKey: ['admin-courses', user?.id, filters, search, ordering, page],
-    queryFn: ({ signal }) =>
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const query = useInfiniteQuery({
+    queryKey: ['admin-courses', user?.id, filters, search, ordering],
+    initialPageParam: 1,
+    getNextPageParam: (lastPage: AdminCoursePage, _pages, lastPageParam) =>
+      lastPage.next ? lastPageParam + 1 : undefined,
+    queryFn: ({ signal, pageParam }) =>
       listAdminCourses(
         {
           ...filters,
           search: search || undefined,
           ordering: ordering || undefined,
-          page,
+          page: pageParam,
         },
         signal,
       ),
     enabled: allowed && search === searchInput.trim(),
   });
+  const { hasNextPage, isFetching, isError, fetchNextPage } = query;
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (
+      !sentinel ||
+      !allowed ||
+      search !== searchInput.trim() ||
+      !hasNextPage ||
+      isFetching ||
+      isError
+    )
+      return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) void fetchNextPage({ cancelRefetch: false });
+      },
+      { rootMargin: '300px' },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [
+    allowed,
+    search,
+    searchInput,
+    hasNextPage,
+    isFetching,
+    isError,
+    fetchNextPage,
+  ]);
+  const courses = query.data?.pages.flatMap((page) => page.results) ?? [];
+  const count = query.data?.pages[0]?.count ?? 0;
   if (profilePending) return <p role="status">Loading courses…</p>;
   if (!allowed) return <Navigate to="/" replace />;
   return (
@@ -337,7 +355,6 @@ export default function CoursesPage() {
             value={searchInput}
             onChange={(event) => {
               setSearchInput(event.target.value);
-              if (page !== 1) setPage(1);
             }}
           />
         </div>
@@ -347,7 +364,6 @@ export default function CoursesPage() {
           value={ordering}
           onChange={(value) => {
             setOrdering(value);
-            setPage(1);
           }}
           options={[
             { value: '', label: 'Newest first' },
@@ -399,23 +415,28 @@ export default function CoursesPage() {
           className="mb-4 rounded-lg bg-red-50 p-4 text-red-800"
         >
           <p>{apiErrorMessage(query.error, 'Could not load courses.')}</p>
-          <Button className="mt-3" onClick={() => void query.refetch()}>
+          <Button
+            className="mt-3"
+            onClick={() =>
+              void (query.isFetchNextPageError
+                ? query.fetchNextPage()
+                : query.refetch())
+            }
+          >
             Retry
           </Button>
         </div>
       )}
-      {query.isSuccess && (
+      {query.data && (
         <>
-          <h2 className="mb-4 text-lg font-bold">
-            Course library · {query.data.count}
-          </h2>
-          {query.data.results.length === 0 && (
+          <h2 className="mb-4 text-lg font-bold">Course library · {count}</h2>
+          {courses.length === 0 && (
             <p className="py-10 text-center text-slate-500">
               No courses found. Try another search or adjust your filters.
             </p>
           )}
           <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {query.data.results.map((course) => (
+            {courses.map((course) => (
               <article
                 key={course.id}
                 className="flex flex-col overflow-hidden rounded-xl border border-[#e6e7ef] bg-white"
@@ -466,27 +487,13 @@ export default function CoursesPage() {
               </article>
             ))}
           </div>
-          <nav
-            aria-label="Course pagination"
-            className="mt-6 flex items-center justify-between gap-3"
-          >
-            <Button
-              disabled={!query.data.previous || query.isFetching}
-              onClick={() => setPage((value) => Math.max(1, value - 1))}
-            >
-              Previous
-            </Button>
+          <div ref={loadMoreRef} className="mt-6 py-4 text-center">
             <p role="status" className="text-sm text-slate-500">
-              Page {page} of {Math.max(1, Math.ceil(query.data.count / 20))} ·{' '}
-              {query.data.count} courses
+              {query.isFetchingNextPage
+                ? 'Loading more courses…'
+                : `Showing ${courses.length} of ${count} courses`}
             </p>
-            <Button
-              disabled={!query.data.next || query.isFetching}
-              onClick={() => setPage((value) => value + 1)}
-            >
-              Next
-            </Button>
-          </nav>
+          </div>
         </>
       )}
       {selected && (

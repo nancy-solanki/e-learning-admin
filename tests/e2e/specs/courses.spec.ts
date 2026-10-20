@@ -26,7 +26,7 @@ test('course filters send selected IDs, numbers and explicit false values and re
   const state = await mockCourses(page);
   await page.goto('/courses?page=2');
   await expect(
-    page.getByRole('heading', { name: 'Course 21', exact: true }),
+    page.getByRole('heading', { name: 'Course 01', exact: true }),
   ).toBeVisible();
   await page.getByRole('button', { name: /^Filters/ }).click();
   await controls.choose('Categories', 'Development');
@@ -71,7 +71,7 @@ test('invalid course URL values are ignored and dialog close restores focus', as
   expect(Object.fromEntries(state.requests.at(-1)!)).toEqual({ page: '1' });
   await expect(
     page.getByRole('button', { name: 'Previous', exact: true }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
   await expect(page.locator('article').nth(2)).toContainText('Deleted');
   const view = page.getByRole('button', { name: 'View course' }).first();
   await view.click();
@@ -79,4 +79,46 @@ test('invalid course URL values are ignored and dialog close restores focus', as
   await page.getByRole('button', { name: 'Close dialog' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(view).toBeFocused();
+});
+
+test('scrolling appends courses, stops at the end, and search resets the list', async ({
+  page,
+}) => {
+  await session(page);
+  const state = await mockCourses(page);
+  await page.goto('/courses');
+  await expect(page.locator('article')).toHaveCount(20);
+  await page.getByRole('status').scrollIntoViewIfNeeded();
+  await expect(page.locator('article')).toHaveCount(21);
+  await expect(page.locator('article').first()).toContainText('Course 01');
+  await expect(page.getByRole('status')).toHaveText('Showing 21 of 21 courses');
+  expect(state.requests.map((params) => params.get('page'))).toEqual([
+    '1',
+    '2',
+  ]);
+  await page.getByRole('textbox', { name: 'Search courses' }).fill('Course 01');
+  await expect(page.locator('article')).toHaveCount(1);
+  expect(Object.fromEntries(state.requests.at(-1)!)).toMatchObject({
+    search: 'Course 01',
+    page: '1',
+  });
+});
+
+test('a failed next page preserves courses and can be retried', async ({
+  page,
+}) => {
+  await session(page);
+  const state = await mockCourses(page);
+  await page.goto('/courses');
+  await expect(page.locator('article')).toHaveCount(20);
+  state.fail = true;
+  await page.getByRole('status').scrollIntoViewIfNeeded();
+  await expect(page.getByRole('alert')).toContainText(
+    'Course service unavailable',
+  );
+  await expect(page.locator('article')).toHaveCount(20);
+  state.fail = false;
+  await page.getByRole('button', { name: 'Retry', exact: true }).click();
+  await expect(page.locator('article')).toHaveCount(21);
+  await expect(page.getByRole('alert')).toHaveCount(0);
 });

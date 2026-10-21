@@ -3,6 +3,9 @@
 ## Setup
 
 Use Node.js 22 and Yarn 1. Install with `yarn install --frozen-lockfile`.
+Run `nvm use` to select the Node.js version in `.nvmrc`; `package.json`
+declares the minimum Node.js version and pins Yarn to 1.22.22.
+Editor indentation and line endings are defined in `.editorconfig`.
 Copy `.env.example` to `.env`. Set `VITE_API_ROOT_URL` to the API origin
 (for example, `http://localhost:8000`), without `/api/v1/auth`.
 `VITE_API_URL` is also supported as an origin-only alias and takes precedence.
@@ -75,6 +78,9 @@ for the production frontend origin as described below.
 
 ## Checks
 
+- `yarn type-check`: application, build/test configuration, unit tests, and E2E
+  TypeScript checks. Unit tests use `tsconfig.test.json`; E2E tests use
+  `tsconfig.e2e.json`.
 - `yarn build`: TypeScript and production bundle.
 - `yarn lint` and `yarn format:check`: static checks.
 - `yarn test`: unit tests.

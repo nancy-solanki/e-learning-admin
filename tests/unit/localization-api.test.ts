@@ -129,7 +129,7 @@ describe('localization API', () => {
       expect(request.method).toBe('delete');
       expect(request.url).toBe('/api/v1/localization/uuid/');
       expect(request.data).toBeUndefined();
-      expect(request.skipAuthRetry).toBe(true);
+      expect(request).toHaveProperty('skipAuthRetry', true);
     }
   });
 

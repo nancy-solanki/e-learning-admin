@@ -43,7 +43,7 @@ export interface AdminCourse {
   updated_at: string | null;
   deleted_at: string | null;
   title: string;
-  slug: string;
+  slug: string | null;
   short_description: string;
   long_description: string;
   is_free: boolean;
@@ -55,20 +55,17 @@ export interface AdminCourse {
   requirements: string;
   total_hours: string;
   total_articles: number;
-  thumbnail: { id: string; name: string; url: string } | null;
+  thumbnail: string | null;
   instructor: string | null;
   categories: string[];
   tags: string[];
   student_count: number;
 }
 export interface AdminCourseFilters {
-  page?: number;
+  page?: number | 'last';
   search?: string;
   status?: CourseStatus;
   category?: string;
-  category_slug?: string;
-  tag?: string;
-  tag_slug?: string;
   instructor?: string;
   price_min?: number;
   price_max?: number;
@@ -91,4 +88,21 @@ export async function listAdminCourses(
     signal,
   });
   return data;
+}
+
+export async function getAdminCourse(id: string): Promise<AdminCourse> {
+  return (await api.get<AdminCourse>(ENDPOINTS.COURSE.ADMIN_DETAIL(id))).data;
+}
+
+export async function patchAdminCourse(
+  id: string,
+  status: CourseStatus,
+  rejectReason?: string,
+): Promise<AdminCourse> {
+  const body: { status: CourseStatus; reject_reason?: string } = { status };
+  if (status === 'rejected' && rejectReason?.trim()) {
+    body.reject_reason = rejectReason.trim();
+  }
+  return (await api.patch<AdminCourse>(ENDPOINTS.COURSE.ADMIN_DETAIL(id), body))
+    .data;
 }

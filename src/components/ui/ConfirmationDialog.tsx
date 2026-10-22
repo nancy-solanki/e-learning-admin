@@ -10,6 +10,7 @@ type ConfirmationDialogProps = {
   cancelLabel?: string;
   pendingLabel?: string;
   pending?: boolean;
+  confirmDisabled?: boolean;
   error?: string | null;
   variant?: 'danger' | 'primary';
   icon?: ReactNode;
@@ -26,6 +27,7 @@ export function ConfirmationDialog({
   cancelLabel = 'Cancel',
   pendingLabel = 'Working…',
   pending = false,
+  confirmDisabled = false,
   error,
   variant = 'danger',
   icon,
@@ -127,7 +129,7 @@ export function ConfirmationDialog({
         </button>
         <button
           type="button"
-          disabled={pending}
+          disabled={pending || confirmDisabled}
           aria-label={pending ? pendingLabel : confirmLabel}
           onClick={onConfirm}
           className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-sm transition focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-70 ${danger ? 'bg-rose-600 shadow-rose-200 hover:bg-rose-700 focus-visible:outline-rose-600' : 'bg-brand hover:bg-brand-dark focus-visible:outline-brand'}`}

@@ -27,11 +27,23 @@ export const ENDPOINTS = {
     CHANGE_PASSWORD: '/api/v1/auth/change-password/',
   },
   COURSE: {
-    ADMIN_LIST: '/api/v1/course/admin/all/',
+    ADMIN_LIST: '/api/v1/course/instructor/all/',
     LIST: '/api/v1/course/',
     DETAIL: (slug: string) => `/api/v1/course/${encodeURIComponent(slug)}/`,
+    ADMIN_DETAIL: (id: string) =>
+      `/api/v1/course/instructor/all/${encodeURIComponent(id)}/`,
     CATEGORY_COURSES: (slug: string) =>
       `/api/v1/course/category/${encodeURIComponent(slug)}/`,
+  },
+  SECTION: {
+    ADMIN_LIST: '/api/v1/section/instructor/all/',
+    ADMIN_DETAIL: (id: string) =>
+      `/api/v1/section/instructor/all/${encodeURIComponent(id)}/`,
+  },
+  LECTURE: {
+    ADMIN_LIST: '/api/v1/lecture/instructor/all/',
+    ADMIN_DETAIL: (id: string) =>
+      `/api/v1/lecture/instructor/all/${encodeURIComponent(id)}/`,
   },
   CATEGORY: {
     LIST: '/api/v1/category/',

@@ -2,6 +2,7 @@ import axios from 'axios';
 export function apiErrorMessage(
   error: unknown,
   fallback = 'Something went wrong. Please try again.',
+  options: { includeFieldErrors?: boolean } = {},
 ) {
   if (!axios.isAxiosError(error)) return fallback;
   const data = error.response?.data as
@@ -13,10 +14,17 @@ export function apiErrorMessage(
       }
     | undefined;
   const fieldMessage = data
-    ? Object.values(data).find(
-        (value): value is string =>
-          typeof value === 'string' && value.trim().length > 0,
-      )
+    ? Object.values(data)
+        .map((value) =>
+          typeof value === 'string'
+            ? value
+            : options.includeFieldErrors &&
+                Array.isArray(value) &&
+                typeof value[0] === 'string'
+              ? value[0]
+              : undefined,
+        )
+        .find((value) => value?.trim())
     : undefined;
   return (
     data?.detail ??

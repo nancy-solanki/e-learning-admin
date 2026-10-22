@@ -37,6 +37,7 @@ it('only includes instructors and keeps IDs separate from display names', async 
         role: ['ROLE_INSTRUCTOR'],
         first_name: 'Alex',
         last_name: 'Morgan',
+        username: 'alex',
         email: 'alex@example.test',
       },
     ],
@@ -46,6 +47,7 @@ it('only includes instructors and keeps IDs separate from display names', async 
       value: 'instructor-id',
       label: 'Alex Morgan',
       description: 'alex@example.test',
+      username: 'alex',
     },
   ]);
 });

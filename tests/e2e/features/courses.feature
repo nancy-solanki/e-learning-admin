@@ -18,7 +18,9 @@ Feature: Admin course catalog
 
 
   Scenario: Search, empty results and server sorting
-    When I choose "Title: Z–A" from "Sort courses"
+    When I open course filters
+    And I choose "Title: Z–A" from "Ordering" in the dialog
+    And I apply course filters
     Then the first course is "Course 21"
     When I search "courses" for "no matching course"
     Then I see "No courses found. Try another search or adjust your filters."

@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test';
 import type { AdminCourse } from '../../../src/api/services/courses';
 
-export const courseEndpoint = '/api/v1/course/admin/all/';
+export const courseEndpoint = '/api/v1/course/instructor/all/';
 export const courses: AdminCourse[] = Array.from({ length: 21 }, (_, i) => ({
   id: `course-${i + 1}`,
   title: `Course ${String(i + 1).padStart(2, '0')}`,
@@ -20,7 +20,7 @@ export const courses: AdminCourse[] = Array.from({ length: 21 }, (_, i) => ({
   requirements: 'No experience required',
   total_hours: '2',
   total_articles: 4,
-  thumbnail: null,
+  thumbnail: i === 0 ? 'thumbnail-file-id' : null,
   instructor: 'instructor-1',
   categories: ['category-1'],
   tags: [],
@@ -29,7 +29,10 @@ export const courses: AdminCourse[] = Array.from({ length: 21 }, (_, i) => ({
 
 export async function mockCourses(page: Page) {
   const requests: URLSearchParams[] = [];
-  const state = { fail: false, requests };
+  const patchBodies: unknown[] = [];
+  const methods: string[] = [];
+  const state = { fail: false, requests, patchBodies, methods };
+  const records = courses.map((course) => ({ ...course }));
   await page.route('**/api/v1/category/**', (route) =>
     route.fulfill({
       json: {
@@ -50,15 +53,39 @@ export async function mockCourses(page: Page) {
       ],
     }),
   );
-  await page.route(`**${courseEndpoint}*`, (route) => {
-    const params = new URL(route.request().url()).searchParams;
+  await page.route(`**${courseEndpoint}**`, (route) => {
+    const request = route.request();
+    methods.push(request.method());
+    const url = new URL(request.url());
+    const params = url.searchParams;
+    const endpointPath = new URL(courseEndpoint, url.origin).pathname;
+    if (url.pathname !== endpointPath) {
+      const id = decodeURIComponent(
+        url.pathname.slice(endpointPath.length).replace(/\/$/, ''),
+      );
+      const course = records.find((record) => record.id === id);
+      if (!course)
+        return route.fulfill({ status: 404, json: { detail: 'Not found' } });
+      if (request.method() === 'PATCH') {
+        const body = request.postDataJSON() as Record<string, unknown>;
+        patchBodies.push(body);
+        if (typeof body.status === 'string') {
+          course.status = body.status as AdminCourse['status'];
+        }
+        if (typeof body.reject_reason === 'string') {
+          course.reject_reason = body.reject_reason;
+        }
+        return route.fulfill({ json: course });
+      }
+      return route.fulfill({ json: course });
+    }
     requests.push(params);
     if (state.fail)
       return route.fulfill({
         status: 503,
         json: { detail: 'Course service unavailable' },
       });
-    let results = courses.filter(
+    let results = records.filter(
       (course) =>
         (!params.get('search') ||
           course.title

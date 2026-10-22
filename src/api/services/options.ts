@@ -3,7 +3,12 @@ import { API_ROOT } from '../config';
 import { ENDPOINTS } from '../endpoints';
 import { listUsers } from './users';
 
-export type ListOption = { value: string; label: string; description?: string };
+export type ListOption = {
+  value: string;
+  label: string;
+  description?: string;
+  username?: string;
+};
 
 export async function listNamedOptions(
   endpoint: string,
@@ -66,6 +71,7 @@ export async function listInstructorOptions(
         user.username ||
         user.email,
       description: user.email,
+      ...(user.username ? { username: user.username } : {}),
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
 }

@@ -258,8 +258,16 @@ describe('API operations', () => {
       { message: 'Denied' },
       { non_field_errors: ['Denied'] },
       { error: 'Denied' },
-    ])
+    ]) {
       expect(client.apiErrorMessage(failure(config, 400, data))).toBe('Denied');
+    }
+    expect(
+      client.apiErrorMessage(
+        failure(config, 400, { title: ['Title is invalid'] }),
+        'Fallback',
+        { includeFieldErrors: true },
+      ),
+    ).toBe('Title is invalid');
     expect(client.apiErrorMessage(new Error(), 'Fallback')).toBe('Fallback');
     expect(client.apiErrorMessage(failure(config, 400, {}), 'Fallback')).toBe(
       'Fallback',

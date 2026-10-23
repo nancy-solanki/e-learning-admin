@@ -11,7 +11,7 @@
   overflow: hidden;
 }
 .coupon-hero-label {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.17em;
   color: #82709f;
@@ -49,7 +49,7 @@
   letter-spacing: -0.7px;
 }
 .coupon-hero-ticket span {
-  font-size: 7px;
+  font-size: 11px;
   letter-spacing: 0.14em;
   color: #9a8aaf;
   border-top: 1px dashed #dcd3ec;
@@ -114,13 +114,13 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: 0.09em;
   color: #8f7eae;
   font-weight: 700;
 }
 .coupon-status {
-  font-size: 9px;
+  font-size: 11px;
   border-radius: 20px;
   padding: 4px 8px;
   background: #f0edf5;
@@ -179,7 +179,7 @@
   justify-content: space-between;
   gap: 8px;
   margin: 24px 0 8px;
-  font-size: 10px;
+  font-size: 12px;
   color: #a19aaa;
 }
 .coupon-usage strong {
@@ -208,7 +208,7 @@
   background: #fdfcfe;
 }
 .coupon-card footer > span {
-  font-size: 9px;
+  font-size: 11px;
   color: #9c93a8;
 }
 .coupon-card footer > div {
@@ -216,7 +216,7 @@
   gap: 12px;
 }
 .coupon-card footer button {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--color-brand);
   padding: 5px 0;
@@ -225,16 +225,83 @@
   color: #b88391;
 }
 .coupon-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
   width: min(590px, calc(100% - 24px));
-  max-height: min(830px, calc(100dvh - 32px));
+  height: min(830px, calc(100dvh - 32px));
+  border: 1px solid #e7e3ef;
+  border-radius: 24px;
+  padding: 0;
+  color: #202335;
+  background: white;
+  box-shadow: 0 24px 100px #17102e40;
+}
+.coupon-dialog::backdrop {
+  background: #19132e66;
+  backdrop-filter: blur(5px);
 }
 .coupon-dialog > form {
-  max-height: min(828px, calc(100dvh - 34px));
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.coupon-dialog-heading {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 22px 18px;
+  border-bottom: 1px solid #f0eff5;
+}
+.coupon-dialog-heading h2 {
+  margin: 6px 0;
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: -0.7px;
+}
+.coupon-dialog-heading p {
+  color: #828698;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.coupon-form {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  border: 0;
+  padding: 18px 22px;
+}
+.coupon-form .ui-field {
+  gap: 8px;
+}
+.coupon-form .ui-field > label {
+  font-size: 12px;
+}
+.coupon-dialog-footer {
+  display: flex;
+  flex: none;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 22px;
+  border-top: 1px solid #f0eff5;
+  background: #faf9fd;
 }
 .coupon-form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+  align-items: start;
+}
+.coupon-expiry-hint {
+  grid-column: 2;
 }
 .coupon-preview {
   display: flex;
@@ -257,12 +324,12 @@
 }
 .coupon-preview span {
   font-family: monospace;
-  font-size: 10px;
+  font-size: 11px;
   overflow-wrap: anywhere;
 }
 .coupon-preview small {
   margin-left: auto;
-  font-size: 10px;
+  font-size: 11px;
   white-space: nowrap;
 }
 .coupon-options {
@@ -292,7 +359,7 @@
   font-weight: 600;
 }
 .coupon-options small {
-  font-size: 10px;
+  font-size: 12px;
   color: #a199ae;
 }
 @media (max-width: 900px) {
@@ -330,6 +397,15 @@
   .coupon-preview small {
     display: none;
   }
+  .coupon-dialog-heading,
+  .coupon-form {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+  .coupon-dialog-footer {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .coupon-card {
@@ -347,4 +423,12 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   display: block;
+}
+
+.coupon-dialog .category-eyebrow {
+  font-size: 11px;
+}
+.coupon-dialog .category-dropzone p,
+.coupon-dialog .category-text-button {
+  font-size: 11px;
 }

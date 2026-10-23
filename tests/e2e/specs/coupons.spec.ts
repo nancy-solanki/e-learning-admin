@@ -46,6 +46,52 @@ test('coupon save failure preserves the draft and allows a successful retry', as
     .first()
     .click();
   const dialog = page.getByRole('dialog');
+  const formBody = dialog.locator('.coupon-form');
+  const dimensions = await formBody.evaluate((element) => ({
+    clientHeight: element.clientHeight,
+    scrollHeight: element.scrollHeight,
+  }));
+  expect(dimensions.scrollHeight).toBeGreaterThan(dimensions.clientHeight);
+  const expiryLayout = await dialog
+    .locator('.coupon-expiry-grid')
+    .evaluate((grid) => {
+      const fields = grid.querySelectorAll('.ui-field');
+      const usageInput = fields[0]?.querySelector('input');
+      const expiryInput = fields[1]?.querySelector('input');
+      if (!usageInput || !expiryInput)
+        throw new Error('Coupon limit and expiry fields are missing.');
+      return {
+        usageInputTop: usageInput.getBoundingClientRect().top,
+        expiryInputTop: expiryInput.getBoundingClientRect().top,
+      };
+    });
+  expect(
+    Math.abs(expiryLayout.usageInputTop - expiryLayout.expiryInputTop),
+  ).toBeLessThanOrEqual(1);
+  const alignment = await formBody.evaluate((element) => {
+    const grid = element.querySelector('.coupon-form-grid');
+    if (!grid) throw new Error('Coupon form grid is missing.');
+    const formBounds = element.getBoundingClientRect();
+    const gridBounds = grid.getBoundingClientRect();
+    return {
+      left: gridBounds.left - formBounds.left,
+      right: formBounds.right - gridBounds.right,
+    };
+  });
+  expect(Math.abs(alignment.left - alignment.right)).toBeLessThanOrEqual(2);
+  const footer = dialog.locator('.coupon-dialog-footer');
+  const footerPosition = await footer.boundingBox();
+  expect(footerPosition).not.toBeNull();
+  await formBody.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await expect(
+    dialog.getByRole('checkbox', { name: 'Instructor-managed' }),
+  ).toBeInViewport();
+  await expect(
+    dialog.getByRole('button', { name: 'Create coupon', exact: true }),
+  ).toBeInViewport();
+  expect(await footer.boundingBox()).toEqual(footerPosition);
   await dialog.getByLabel('Coupon code').fill('RETRY20');
   await controls.choose('Course', 'Python Basics', dialog);
   await dialog

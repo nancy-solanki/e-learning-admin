@@ -156,9 +156,6 @@
   position: fixed;
   margin: 0;
   overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: #c4b5fd transparent;
 }
 .ui-select-value {
   display: inline-flex;

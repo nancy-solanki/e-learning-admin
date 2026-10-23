@@ -7,6 +7,7 @@
   --font-display: 'Plus Jakarta Sans', sans-serif;
   --color-brand: #6c55ff;
   --color-brand-dark: #5943df;
+  --color-scrollbar-thumb: #c4b5fd;
 }
 
 :root {
@@ -16,6 +17,27 @@
 }
 * {
   box-sizing: border-box;
+  scrollbar-color: var(--color-scrollbar-thumb) transparent;
+  scrollbar-width: thin;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+  margin-block: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--color-scrollbar-thumb);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brand);
+}
+.ui-scroll-area {
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
 }
 body {
   margin: 0;
@@ -29,10 +51,6 @@ button {
   cursor: pointer;
 }
 
-.admin-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: #454556 transparent;
-}
 button:disabled {
   cursor: not-allowed;
 }

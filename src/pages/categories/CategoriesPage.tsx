@@ -140,7 +140,7 @@ function CategoryEditor({
             <CloseIcon className="h-5 w-5" />
           </button>
         </header>
-        <fieldset disabled={pending} className="category-form">
+        <fieldset disabled={pending} className="category-form ui-scroll-area">
           <Field
             label="Category title"
             htmlFor="category-title"

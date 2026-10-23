@@ -10,6 +10,7 @@ import {
   SearchIcon,
 } from '../../components/icons/AdminIcons';
 import { ConfirmationDialog } from '../../components/ui/ConfirmationDialog';
+import { Button } from '../../components/ui/Button';
 import { apiErrorMessage, apiFieldErrors } from '../../api/errors';
 import {
   getCoupon,
@@ -167,7 +168,7 @@ function CouponEditor({
   return (
     <dialog
       ref={dialog}
-      className="category-dialog coupon-dialog"
+      className="coupon-dialog"
       aria-labelledby="coupon-editor-title"
       onCancel={(event) => {
         event.preventDefault();
@@ -175,7 +176,7 @@ function CouponEditor({
       }}
     >
       <form onSubmit={submit}>
-        <header className="category-dialog-heading">
+        <header className="coupon-dialog-heading">
           <div>
             <span className="category-eyebrow">
               A LITTLE INCENTIVE. A BIG OPPORTUNITY.
@@ -195,7 +196,7 @@ function CouponEditor({
             <CloseIcon className="h-5 w-5" />
           </button>
         </header>
-        <fieldset className="category-form" disabled={busy}>
+        <fieldset className="coupon-form ui-scroll-area" disabled={busy}>
           <div className="coupon-preview">
             <CouponIcon className="h-7 w-7" />
             <div>
@@ -356,7 +357,7 @@ function CouponEditor({
               />
             </Field>
           </div>
-          <div className="coupon-form-grid">
+          <div className="coupon-form-grid coupon-expiry-grid">
             <Field
               label="Usage limit"
               htmlFor="coupon-limit"
@@ -377,16 +378,26 @@ function CouponEditor({
               label="Expiry date"
               htmlFor="coupon-expiry"
               error={errors.expired_at}
-              hint="Leave blank for the default of 3 days."
             >
               <Input
                 id="coupon-expiry"
                 type="date"
                 value={draft.expired_at ?? ''}
                 onChange={(e) => update('expired_at', e.target.value || null)}
-                aria-describedby="coupon-expiry-help"
+                aria-invalid={!!errors.expired_at}
+                aria-describedby={
+                  errors.expired_at
+                    ? 'coupon-expiry-help'
+                    : 'coupon-expiry-hint'
+                }
               />
             </Field>
+            <div
+              id="coupon-expiry-hint"
+              className="coupon-expiry-hint ui-field-hint"
+            >
+              Leave blank for the default of 3 days.
+            </div>
           </div>
           <div className="coupon-options">
             {(
@@ -431,18 +442,23 @@ function CouponEditor({
             </p>
           )}
         </fieldset>
-        <footer className="category-dialog-footer">
-          <button
+        <footer className="coupon-dialog-footer">
+          <Button
             type="button"
-            className="category-secondary"
+            className="!rounded-xl !px-[18px] !py-3"
             disabled={busy}
             onClick={onClose}
           >
             Cancel
-          </button>
-          <button className="category-primary" disabled={busy}>
+          </Button>
+          <Button
+            variant="primary"
+            type="submit"
+            className="!rounded-xl !px-[18px] !py-3"
+            disabled={busy}
+          >
             {pending ? 'Saving…' : coupon ? 'Save changes' : 'Create coupon'}
-          </button>
+          </Button>
         </footer>
       </form>
     </dialog>
@@ -545,12 +561,13 @@ export default function CouponsPage() {
           </h1>
           <p>Create a little motivation for their next big step.</p>
         </div>
-        <button
-          className="category-primary"
+        <Button
+          variant="primary"
+          className="!rounded-xl !px-[18px] !py-3"
           onClick={() => setEditor({ coupon: null })}
         >
-          <span aria-hidden="true">＋</span> Create coupon
-        </button>
+          Create coupon
+        </Button>
       </div>
       <div className="coupon-hero">
         <div>

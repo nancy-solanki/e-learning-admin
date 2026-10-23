@@ -128,7 +128,7 @@ export function Select({
           aria-label={label}
           tabIndex={-1}
           aria-activedescendant={`${id}-${active}`}
-          className="ui-select-menu"
+          className="ui-select-menu ui-scroll-area"
           onKeyDown={(event) => {
             if (event.key === 'Escape') {
               event.preventDefault();

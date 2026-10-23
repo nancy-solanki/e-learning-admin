@@ -649,26 +649,8 @@
   min-height: 0;
   min-width: 0;
   overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: #c4b5fd transparent;
-  scrollbar-gutter: stable;
   gap: 14px;
   padding: 18px 22px;
-}
-.category-form::-webkit-scrollbar {
-  width: 6px;
-}
-.category-form::-webkit-scrollbar-track {
-  background: transparent;
-  margin-block: 8px;
-}
-.category-form::-webkit-scrollbar-thumb {
-  background: #c4b5fd;
-  border-radius: 999px;
-}
-.category-form::-webkit-scrollbar-thumb:hover {
-  background: var(--color-brand);
 }
 .category-form .ui-textarea {
   min-height: 80px;

@@ -116,7 +116,7 @@ export default function AdminLayout() {
         </NavLink>
         <nav
           aria-label="Main navigation"
-          className="admin-scroll flex-1 overflow-y-auto px-3 py-5"
+          className="flex-1 overflow-y-auto px-3 py-5"
         >
           <p className="mb-2 px-3 text-[10px] font-medium uppercase tracking-[0.14em] text-[#777e96]">
             Main

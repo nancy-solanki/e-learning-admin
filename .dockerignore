@@ -12,6 +12,5 @@ coverage
 playwright-report
 test-results
 .features-gen
-tests
 *.log
 README.md

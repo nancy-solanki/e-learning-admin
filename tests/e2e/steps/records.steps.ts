@@ -1,6 +1,10 @@
 import { readFile } from 'node:fs/promises';
-import { When, Then, expect } from '../fixtures/test';
+import { Given, When, Then, expect } from '../fixtures/test';
 import { recordConfig } from '../pages/preview-pages';
+import { mockWallet } from '../support/wallet-api';
+Given('the wallet API is available', async ({ page }) => {
+  await mockWallet(page);
+});
 When(
   'I apply the record filters for {string}',
   async ({ preview }, kind: string) => {
@@ -23,7 +27,7 @@ When('I view the matching {string} record', async ({ page }, kind: string) => {
 Then('the {string} details are correct', async ({ preview }, kind: string) => {
   await expect(preview.dialog).toContainText(recordConfig(kind).id);
   if (kind === 'wallets')
-    await expect(preview.dialog).toContainText('-$250.00');
+    await expect(preview.dialog).toContainText('−₹250.00');
   else
     await expect(preview.dialog.getByRole('progressbar')).toHaveAttribute(
       'aria-valuenow',
@@ -44,7 +48,7 @@ Then(
     const path = await download.path();
     if (!path) throw new Error('The CSV download has no local path');
     const csv = await readFile(path, 'utf8');
-    expect(csv.split('\r\n')).toHaveLength(2);
+    expect(csv.split('\r\n').filter(Boolean)).toHaveLength(2);
     expect(csv).toContain(config.id);
     expect(csv).not.toContain(config.excludedId);
   },
@@ -52,3 +56,13 @@ Then(
 Then('all {string} records are shown', async ({ page }, kind: string) => {
   await expect(page.locator('tbody tr')).toHaveCount(recordConfig(kind).total);
 });
+Then(
+  'the no-results state for {string} is shown',
+  async ({ page }, kind: string) => {
+    const heading =
+      kind === 'wallets'
+        ? 'No matching transactions found'
+        : 'No enrollments found';
+    await expect(page.getByRole('heading', { name: heading })).toBeVisible();
+  },
+);

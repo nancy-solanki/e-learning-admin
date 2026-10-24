@@ -1,0 +1,22 @@
+.wallet-status {
+  display: inline-flex;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-weight: 500;
+}
+.wallet-status-completed {
+  background: #edf7f1;
+  color: #39876a;
+}
+.wallet-status-pending {
+  background: #fcf5df;
+  color: #94712e;
+}
+.wallet-status-failed {
+  background: #fff0f2;
+  color: #bd5268;
+}
+.wallet-status-cancelled {
+  background: #f0edf5;
+  color: #777183;
+}

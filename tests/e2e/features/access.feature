@@ -34,7 +34,18 @@ Feature: Route access and session boundaries
       | path      | heading   |
       | /sections | Sections. |
       | /lectures | Lectures. |
-      | /wallets  | Wallet.   |
+
+  Scenario: An instructor can open their own wallet
+    Given I am signed in as instructor
+    And the wallet API is available
+    When I open "/wallets"
+    Then I see the heading "Wallet."
+
+  Scenario: A learner cannot open the wallet page
+    Given I am signed in as learner
+    When I open "/wallets"
+    Then the URL is "/"
+    And I see the heading "Welcome to your dashboard"
 
   Scenario Outline: <role> cannot access admin enrollments
     Given I am signed in as <role>

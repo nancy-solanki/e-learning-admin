@@ -4,15 +4,15 @@ import type { Controls } from './controls';
 export const recordPages = {
   wallets: {
     noun: 'transactions',
-    total: 8,
-    id: 'TXN-1007',
-    excludedId: 'TXN-1008',
+    total: 9,
+    id: 'REF-WITHDRAWAL-1007',
+    excludedId: 'REF-EARNING-1008',
     statusFilter: 'Transaction status',
     status: 'Pending',
     secondFilter: 'Transaction type',
     secondOption: 'Withdrawal',
     detail: 'transaction',
-    filename: 'sample-wallet-transactions.csv',
+    filename: 'wallet-transactions.csv',
   },
   enrollments: {
     noun: 'enrollments',

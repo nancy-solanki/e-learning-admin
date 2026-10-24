@@ -67,8 +67,11 @@ export const ENDPOINTS = {
       `/api/v1/coupon/validate/${encodeURIComponent(code)}/`,
   },
   WALLET: {
-    RETRIEVE: '/api/v1/wallet/',
-    DETAIL: (id: string | number) => `/api/v1/wallet/${id}/`,
+    OVERVIEW: '/api/v1/wallet/overview/',
+    TRANSACTIONS: '/api/v1/wallet/transactions/',
+    TRANSACTION_DETAIL: (id: string) =>
+      `/api/v1/wallet/transactions/${encodeURIComponent(id)}/`,
+    TRANSACTION_EXPORT: '/api/v1/wallet/transactions/export/',
   },
   BANK: {
     LIST: '/api/v1/bank/',

@@ -187,3 +187,118 @@ test('export errors are reported without starting a download', async ({
   );
   await expect(download).rejects.toThrow();
 });
+
+for (const endpoint of ['overview', 'transactions'] as const) {
+  test(`wallet ${endpoint} recovers after retrying a failed request`, async ({
+    page,
+  }) => {
+    await session(page);
+    await mockWallet(page);
+    let unavailable = true;
+    let requests = 0;
+    await page.route(`**/api/v1/wallet/${endpoint}/?*`, async (route) => {
+      requests += 1;
+      if (unavailable) {
+        await route.fulfill({
+          status: 503,
+          json: { detail: `${endpoint} temporarily unavailable` },
+        });
+      } else {
+        await route.fallback();
+      }
+    });
+    await page.goto('/wallets');
+    const error = page.getByRole('alert').filter({
+      hasText: `${endpoint} temporarily unavailable`,
+    });
+    await expect(error).toBeVisible();
+    // Recover only after the user explicitly retries the failed request.
+    const failedRequests = requests;
+    unavailable = false;
+    await error.getByRole('button', { name: 'Try again' }).click();
+    await expect(error).toHaveCount(0);
+    expect(requests).toBeGreaterThan(failedRequests);
+    await expect(page.getByText('₹2,347.00', { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('table', { name: 'Wallet transaction history' }),
+    ).toBeVisible();
+  });
+}
+
+test('transaction details recover in the same drawer after a failed request', async ({
+  page,
+}) => {
+  await session(page);
+  await mockWallet(page);
+  const transaction = walletTransactions[0];
+  let unavailable = true;
+  await page.route(
+    `**/api/v1/wallet/transactions/${transaction.id}/`,
+    async (route) => {
+      if (unavailable) {
+        await route.fulfill({
+          status: 503,
+          json: { detail: 'Transaction temporarily unavailable' },
+        });
+      } else {
+        await route.fallback();
+      }
+    },
+  );
+  await page.goto('/wallets');
+  await expect(page.getByText('₹2,347.00', { exact: true })).toBeVisible();
+  await page
+    .getByRole('button', {
+      name: `View transaction ${transaction.reference}`,
+    })
+    .click();
+  const dialog = page.getByRole('dialog', { name: 'Transaction details' });
+  await expect(dialog.getByRole('alert')).toContainText(
+    'Transaction temporarily unavailable',
+  );
+  unavailable = false;
+  await dialog.getByRole('button', { name: 'Try again' }).click();
+  await expect(dialog.getByRole('alert')).toHaveCount(0);
+  await expect(dialog).toContainText(transaction.reference);
+  await expect(dialog).toContainText('+₹89.00');
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole('table')).toBeVisible();
+});
+
+test('wallet rejects reversed dates and resumes requests when corrected', async ({
+  page,
+}) => {
+  await page.clock.setFixedTime(new Date('2026-10-25T12:00:00Z'));
+  await session(page);
+  const state = await mockWallet(page);
+  await page.goto('/wallets');
+  await expect(page.getByRole('table')).toBeVisible();
+  await page.getByLabel('End date').fill('2026-10-10');
+  await page.getByLabel('Start date').fill('2026-10-11');
+  await expect(page.getByRole('alert')).toHaveText(
+    'Start date must be on or before the end date.',
+  );
+  await expect(
+    page.getByRole('button', { name: 'Export transactions' }),
+  ).toBeDisabled();
+
+  const recovered = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      url.pathname === '/api/v1/wallet/transactions/' &&
+      url.searchParams.get('start') === '2026-10-09' &&
+      url.searchParams.get('end') === '2026-10-10'
+    );
+  });
+  await page.getByLabel('Start date').fill('2026-10-09');
+  await recovered;
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(page.getByRole('table')).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Export transactions' }),
+  ).toBeEnabled();
+  expect(
+    state.listQueries.every((query) => query.get('start') !== '2026-10-11'),
+  ).toBe(true);
+});

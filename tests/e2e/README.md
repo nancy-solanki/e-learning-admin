@@ -90,3 +90,6 @@ are uploaded alongside unit coverage. CI limits workers to two, forbids
 Course coverage includes server pagination, search, sorting, URL filters, option IDs,
 explicit boolean filters, retryable failures, detail dialogs, and admin-only access.
 Coupon regressions cover list recovery and failed saves without losing the draft.
+
+Wallet regressions cover overview, history, and detail retry recovery, plus invalid
+date ranges disabling exports and resuming requests after correction.

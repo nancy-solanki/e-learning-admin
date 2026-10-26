@@ -1,6 +1,7 @@
 import { api } from '../axios';
 import { API_ROOT } from '../config';
 import { ENDPOINTS } from '../endpoints';
+import { listCourseOptions } from './courses';
 import { listUsers } from './users';
 
 export type ListOption = {
@@ -48,6 +49,32 @@ export async function listNamedOptions(
 
 export const listCategoryOptions = (signal?: AbortSignal) =>
   listNamedOptions(ENDPOINTS.CATEGORY.LIST, 'title', signal);
+
+export async function listRatingCourseOptions(
+  signal?: AbortSignal,
+): Promise<ListOption[]> {
+  return (await listCourseOptions(signal)).map((course) => ({
+    value: course.id,
+    label: course.title,
+  }));
+}
+
+export async function listRatingUserOptions(
+  signal?: AbortSignal,
+): Promise<ListOption[]> {
+  const users = await listUsers({}, signal);
+  return users
+    .map((user) => ({
+      value: user.id,
+      label:
+        user.full_name ||
+        [user.first_name, user.last_name].filter(Boolean).join(' ') ||
+        user.username ||
+        user.email,
+      description: user.email,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
 
 export async function listInstructorOptions(
   signal?: AbortSignal,

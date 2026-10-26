@@ -10,4 +10,5 @@ export const queryKeys = {
   users: ['users'] as const,
   categories: ['categories'] as const,
   localizations: ['localizations'] as const,
+  ratings: ['ratings'] as const,
 };

@@ -58,7 +58,8 @@ export const ENDPOINTS = {
   },
   RATING: {
     MANAGEMENT: '/api/v1/rating/management/',
-    DETAIL: (id: string | number) => `/api/v1/rating/management/${id}/`,
+    DETAIL: (id: string | number) =>
+      `/api/v1/rating/management/${encodeURIComponent(String(id))}/`,
   },
   COUPON: {
     MANAGEMENT: '/api/v1/coupon/management/',

@@ -32,6 +32,7 @@ import CoursesPage from './pages/courses/CoursesPage';
 import CurriculumPage from './pages/curriculum/CurriculumPage';
 import WalletsPage from './pages/wallets/WalletsPage';
 import EnrollmentsPage from './pages/enrollments/EnrollmentsPage';
+import RatingsPage from './pages/ratings/RatingsPage';
 import NotFoundPage from './pages/NotFoundPage';
 import './styles.css';
 
@@ -109,7 +110,7 @@ function PublicRoute() {
   const from: unknown = location.state?.from;
   const destination =
     typeof from === 'string' &&
-    /^\/(?:users|profile|categories|coupons|courses|sections|lectures|wallets|enrollments|localizations)(?:\?|$)/.test(
+    /^\/(?:users|profile|categories|coupons|courses|sections|lectures|wallets|enrollments|localizations|ratings)(?:\?|$)/.test(
       from,
     )
       ? from
@@ -171,6 +172,7 @@ export default function App() {
                 <Route path="enrollments" element={<EnrollmentsPage />} />
                 <Route path="users" element={<UsersPage />} />
                 <Route path="categories" element={<CategoriesPage />} />
+                <Route path="ratings" element={<RatingsPage />} />
               </Route>
               <Route path="localizations" element={<LocalizationsPage />} />
             </Route>

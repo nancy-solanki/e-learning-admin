@@ -35,7 +35,7 @@ export const adminNavigation: NavigationItem[] = [
   { label: 'Courses', icon: BookIcon, path: '/courses' },
   { label: 'Sections', icon: LayersIcon, path: '/sections' },
   { label: 'Lectures', icon: LectureIcon, path: '/lectures' },
-  { label: 'Ratings', icon: StarIcon },
+  { label: 'Ratings', icon: StarIcon, path: '/ratings' },
   { label: 'Wallets', icon: WalletIcon, path: '/wallets' },
   { label: 'Coupons', icon: CouponIcon, path: '/coupons' },
   {
@@ -73,6 +73,5 @@ export const instructorNavigation: NavigationItem[] = [
       { label: 'Draft Lectures', path: '/lectures?status=Draft' },
     ],
   },
-  { label: 'Ratings', icon: StarIcon },
   { label: 'Wallets', icon: WalletIcon, path: '/wallets' },
 ];

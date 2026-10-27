@@ -147,76 +147,81 @@ export default function AdminLayout() {
               Management
             </p>
           )}
-          {navigation.map(({ label, icon: Icon, path, submenu }) =>
-            path ? (
-              <NavLink
-                key={label}
-                to={path}
-                className={linkClass}
-                onClick={() => setMenuOpen(false)}
-              >
-                <Icon className="h-[18px] w-[18px]" />
-                {label}
-              </NavLink>
-            ) : submenu ? (
-              <details
-                key={label}
-                className="group"
-                open={
-                  submenu.some(
-                    (item) =>
-                      typeof item !== 'string' &&
-                      item.path.split('?')[0] === location.pathname,
-                  ) || undefined
-                }
-              >
-                <summary className="flex cursor-pointer list-none items-center gap-3 rounded-lg px-3 py-3 text-sm text-[#bbc0d1] hover:bg-white/5">
+          {navigation
+            .filter(
+              (item) =>
+                item.path !== '/enrollments' || user?.role?.includes('admin'),
+            )
+            .map(({ label, icon: Icon, path, submenu }) =>
+              path ? (
+                <NavLink
+                  key={label}
+                  to={path}
+                  className={linkClass}
+                  onClick={() => setMenuOpen(false)}
+                >
                   <Icon className="h-[18px] w-[18px]" />
-                  <span className="flex-1">{label}</span>
-                  <ArrowDownIcon className="h-3.5 w-3.5 transition group-open:rotate-180" />
-                </summary>
-                <div className="ml-9 border-l border-white/10 pl-3 pb-2">
-                  {submenu.map((item) =>
-                    typeof item === 'string' ? (
-                      <div key={item} className="py-2 text-xs text-[#9299b1]">
-                        {item}
-                      </div>
-                    ) : (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        aria-current={
-                          isSubmenuActive(item.path) ? 'page' : undefined
-                        }
-                        className={`block py-2 text-xs ${isSubmenuActive(item.path) ? 'font-semibold text-white' : 'text-[#9299b1] hover:text-white'}`}
-                        onClick={() => setMenuOpen(false)}
-                      >
-                        {item.label}
-                      </Link>
-                    ),
-                  )}
-                  {submenu.some((item) => typeof item === 'string') && (
-                    <span className="mt-1 inline-block rounded bg-white/5 px-2 py-1 text-[10px] text-[#9299b1]">
-                      Coming soon
-                    </span>
-                  )}
+                  {label}
+                </NavLink>
+              ) : submenu ? (
+                <details
+                  key={label}
+                  className="group"
+                  open={
+                    submenu.some(
+                      (item) =>
+                        typeof item !== 'string' &&
+                        item.path.split('?')[0] === location.pathname,
+                    ) || undefined
+                  }
+                >
+                  <summary className="flex cursor-pointer list-none items-center gap-3 rounded-lg px-3 py-3 text-sm text-[#bbc0d1] hover:bg-white/5">
+                    <Icon className="h-[18px] w-[18px]" />
+                    <span className="flex-1">{label}</span>
+                    <ArrowDownIcon className="h-3.5 w-3.5 transition group-open:rotate-180" />
+                  </summary>
+                  <div className="ml-9 border-l border-white/10 pl-3 pb-2">
+                    {submenu.map((item) =>
+                      typeof item === 'string' ? (
+                        <div key={item} className="py-2 text-xs text-[#9299b1]">
+                          {item}
+                        </div>
+                      ) : (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          aria-current={
+                            isSubmenuActive(item.path) ? 'page' : undefined
+                          }
+                          className={`block py-2 text-xs ${isSubmenuActive(item.path) ? 'font-semibold text-white' : 'text-[#9299b1] hover:text-white'}`}
+                          onClick={() => setMenuOpen(false)}
+                        >
+                          {item.label}
+                        </Link>
+                      ),
+                    )}
+                    {submenu.some((item) => typeof item === 'string') && (
+                      <span className="mt-1 inline-block rounded bg-white/5 px-2 py-1 text-[10px] text-[#9299b1]">
+                        Coming soon
+                      </span>
+                    )}
+                  </div>
+                </details>
+              ) : (
+                <div
+                  key={label}
+                  aria-disabled="true"
+                  title="Coming soon"
+                  className="flex items-center gap-3 px-3 py-3 text-sm text-[#9299b1]"
+                >
+                  <Icon className="h-[18px] w-[18px]" />
+                  <span>{label}</span>
+                  <span className="ml-auto text-[9px] uppercase tracking-wide text-[#747b93]">
+                    Soon
+                  </span>
                 </div>
-              </details>
-            ) : (
-              <div
-                key={label}
-                aria-disabled="true"
-                title="Coming soon"
-                className="flex items-center gap-3 px-3 py-3 text-sm text-[#9299b1]"
-              >
-                <Icon className="h-[18px] w-[18px]" />
-                <span>{label}</span>
-                <span className="ml-auto text-[9px] uppercase tracking-wide text-[#747b93]">
-                  Soon
-                </span>
-              </div>
-            ),
-          )}
+              ),
+            )}
         </nav>
         <div className="flex shrink-0 items-center gap-3 border-t border-white/5 p-4">
           <Avatar user={user} className="h-9 w-9 text-xs" />

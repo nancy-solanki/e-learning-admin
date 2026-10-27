@@ -7,7 +7,10 @@ export function Avatar({
   src,
   className = '',
 }: {
-  user: User | null;
+  user: Pick<
+    User,
+    'avatar' | 'full_name' | 'first_name' | 'last_name' | 'username'
+  > | null;
   src?: string | null;
   className?: string;
 }) {

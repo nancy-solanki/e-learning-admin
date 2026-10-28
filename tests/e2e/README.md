@@ -60,7 +60,8 @@ device, never once in each suite.
 | Courses                                | `courses.feature`       | `courses.spec.ts`                      |
 | Ratings management                     | —                       | `ratings.spec.ts`                      |
 | Sections and lecture status URLs       | `curriculum.feature`    | —                                      |
-| Wallets, enrollments, and CSV exports  | `records.feature`       | —                                      |
+| Wallet transactions and CSV exports    | `records.feature`       | —                                      |
+| Enrollment report                      | —                       | `enrollments.spec.ts`                  |
 
 The four preview pages use sample data, including temporary drafts and edits.
 Tests assert that changes reset on reload; they do not imply server persistence.

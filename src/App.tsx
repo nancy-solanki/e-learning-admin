@@ -168,8 +168,8 @@ export default function App() {
                 element={<CurriculumPage key="lectures" kind="lectures" />}
               />
               <Route path="profile" element={<ProfilePage />} />
-              <Route path="enrollments" element={<EnrollmentsPage />} />
               <Route element={<AdminRoute />}>
+                <Route path="enrollments" element={<EnrollmentsPage />} />
                 <Route path="users" element={<UsersPage />} />
                 <Route path="categories" element={<CategoriesPage />} />
                 <Route path="ratings" element={<RatingsPage />} />

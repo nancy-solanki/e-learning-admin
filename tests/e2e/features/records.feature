@@ -1,5 +1,5 @@
 @preview @exports
-Feature: Wallet and enrollment records
+Feature: Wallet records
   Background:
     Given I am signed in as admin
 
@@ -25,4 +25,3 @@ Feature: Wallet and enrollment records
     Examples:
       | kind        | noun         | id       |
       | wallets     | transactions | REF-WITHDRAWAL-1007 |
-      | enrollments | enrollments  | ENR-1002 |

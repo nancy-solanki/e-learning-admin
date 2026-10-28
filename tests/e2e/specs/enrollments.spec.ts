@@ -164,9 +164,17 @@ for (const role of ['learner', 'instructor', 'staff']) {
       });
     });
     await page.goto('/enrollments');
-    await expect(
-      page.getByRole('heading', { name: 'Access denied' }),
-    ).toBeVisible();
+    if (role === 'staff') {
+      await expect(page).toHaveURL('/enrollments');
+      await expect(
+        page.getByRole('heading', { name: 'Access denied' }),
+      ).toBeVisible();
+    } else {
+      await expect(page).toHaveURL('/');
+      await expect(
+        page.getByRole('heading', { name: 'Welcome to your dashboard' }),
+      ).toBeVisible();
+    }
     await expect(
       page.getByRole('link', { name: 'Enrollments', exact: true }),
     ).toHaveCount(0);

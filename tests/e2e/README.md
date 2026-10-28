@@ -58,13 +58,14 @@ device, never once in each suite.
 | Coupons                                | `coupons.feature`       | `coupons.spec.ts`                      |
 | Localizations                          | `localizations.feature` | `localizations.spec.ts`                |
 | Courses                                | `courses.feature`       | `courses.spec.ts`                      |
+| Ratings management                     | —                       | `ratings.spec.ts`                      |
 | Sections and lecture status URLs       | `curriculum.feature`    | —                                      |
 | Wallets, enrollments, and CSV exports  | `records.feature`       | —                                      |
 
 The four preview pages use sample data, including temporary drafts and edits.
 Tests assert that changes reset on reload; they do not imply server persistence.
 API-backed pages use mocks, not a live backend. Navigation labels without routes
-(e.g. Orders and Ratings) are not implemented pages.
+(e.g. Orders) are not implemented pages.
 
 ## Adding or changing scenarios
 
@@ -93,3 +94,8 @@ Coupon regressions cover list recovery and failed saves without losing the draft
 
 Wallet regressions cover overview, history, and detail retry recovery, plus invalid
 date ranges disabling exports and resuming requests after correction.
+
+Ratings regressions cover admin-only access, responsive navigation, pagination,
+search, empty results, all filter parameters and sorting choices, draft reset,
+detail and list recovery, comment/response edits and clearing, deletion and
+last-page recovery, pending mutation locks, keyboard focus, and option retries.

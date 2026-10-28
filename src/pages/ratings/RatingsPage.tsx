@@ -351,7 +351,10 @@ export default function RatingsPage() {
                     <th scope="col" className="px-5 py-3 font-semibold">
                       Date
                     </th>
-                    <th scope="col" className="px-5 py-3 font-semibold">
+                    <th
+                      scope="col"
+                      className="relative px-5 py-3 font-semibold"
+                    >
                       <span className="sr-only">Actions</span>
                     </th>
                   </tr>

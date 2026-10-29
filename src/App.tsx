@@ -173,8 +173,8 @@ export default function App() {
                 <Route path="users" element={<UsersPage />} />
                 <Route path="categories" element={<CategoriesPage />} />
                 <Route path="ratings" element={<RatingsPage />} />
+                <Route path="localizations" element={<LocalizationsPage />} />
               </Route>
-              <Route path="localizations" element={<LocalizationsPage />} />
             </Route>
           </Route>
 

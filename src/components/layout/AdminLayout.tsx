@@ -7,7 +7,6 @@ import {
   MenuIcon,
   FullscreenIcon,
   ArrowDownIcon,
-  GlobeIcon,
 } from '../../components/icons/AdminIcons';
 import { useState } from 'react';
 import {
@@ -20,6 +19,20 @@ import {
 import { clearSession } from '../../state/session';
 import { useCurrentUser } from '../../state/profile';
 import { isAdmin } from '../../lib/permissions';
+
+const pageTitles: Record<string, string> = {
+  '/enrollments': 'Enrollment management',
+  '/wallets': 'Wallet management',
+  '/sections': 'Section management',
+  '/lectures': 'Lecture management',
+  '/courses': 'Course management',
+  '/coupons': 'Coupon management',
+  '/categories': 'Category management',
+  '/localizations': 'Localization management',
+  '/users': 'Users management',
+  '/ratings': 'Ratings management',
+  '/profile': 'My profile',
+};
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -58,30 +71,7 @@ export default function AdminLayout() {
         new URLSearchParams(location.search).get('status')
     );
   }
-  const pageTitle =
-    location.pathname === '/enrollments'
-      ? 'Enrollment management'
-      : location.pathname === '/wallets'
-        ? 'Wallet management'
-        : location.pathname === '/sections'
-          ? 'Section management'
-          : location.pathname === '/lectures'
-            ? 'Lecture management'
-            : location.pathname === '/courses'
-              ? 'Course management'
-              : location.pathname === '/coupons'
-                ? 'Coupon management'
-                : location.pathname === '/categories'
-                  ? 'Category management'
-                  : location.pathname === '/localizations'
-                    ? 'Localization management'
-                    : location.pathname === '/users'
-                      ? 'Users management'
-                      : location.pathname === '/ratings'
-                        ? 'Ratings management'
-                        : location.pathname === '/profile'
-                          ? 'My profile'
-                          : 'Dashboard';
+  const pageTitle = pageTitles[location.pathname] ?? 'Dashboard';
   const fullscreen = async () => {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
@@ -132,16 +122,6 @@ export default function AdminLayout() {
             <HomeIcon className="h-[18px] w-[18px]" />
             Home
           </NavLink>
-          {!isAdmin(user) && (
-            <NavLink
-              to="/localizations"
-              className={linkClass}
-              onClick={() => setMenuOpen(false)}
-            >
-              <GlobeIcon className="h-[18px] w-[18px]" />
-              Localizations
-            </NavLink>
-          )}
           {navigation.length > 0 && (
             <p className="mb-2 mt-6 px-3 text-[10px] font-medium uppercase tracking-[0.14em] text-[#777e96]">
               Management

@@ -1,6 +1,5 @@
 import { test, expect } from '../fixtures/test';
-import { session } from '../support/session';
-import { learner } from '../fixtures/users';
+import { session, sessionAs } from '../support/session';
 
 test('sidebar localization link opens the localization page', async ({
   controls,
@@ -24,29 +23,34 @@ test('sidebar localization link opens the localization page', async ({
   ).toBeVisible();
 });
 
-test('non-admin users only read active localizations', async ({
-  controls,
-  page,
-}) => {
-  await session(page, learner);
-  await page.route('**/api/v1/localization/**', (route) =>
-    route.fulfill({
-      json: { count: 0, next: null, previous: null, results: [] },
-    }),
-  );
-  const listRequest = page.waitForRequest('**/api/v1/localization/**');
-  await page.goto('/localizations');
-  const list = await listRequest;
-  expect(new URL(list.url()).searchParams.get('is_deleted')).toBe('false');
-  await controls.openNavigation();
-  await expect(
-    page.getByRole('link', { name: 'Localizations', exact: true }),
-  ).toBeVisible();
-  await expect(page.getByLabel('Record status')).toHaveCount(0);
-  await expect(
-    page.getByRole('button', { name: 'Create localization' }),
-  ).toHaveCount(0);
-});
+for (const role of ['learner', 'instructor']) {
+  test(`${role} cannot access localizations or request management data`, async ({
+    controls,
+    page,
+  }) => {
+    await sessionAs(page, role);
+    const requests: string[] = [];
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname.startsWith('/api/v1/localization/')) {
+        requests.push(request.url());
+      }
+    });
+
+    await page.goto('/localizations');
+    await expect(page).toHaveURL('/');
+    await controls.openNavigation();
+    await expect(
+      page.getByRole('link', { name: 'Localizations', exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole('heading', { name: 'Localizations', exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: 'Create localization' }),
+    ).toHaveCount(0);
+    expect(requests).toEqual([]);
+  });
+}
 
 test('returns to the previous page when a toggle empties the current page', async ({
   controls,

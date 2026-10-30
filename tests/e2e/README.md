@@ -59,7 +59,7 @@ device, never once in each suite.
 | Localizations                          | `localizations.feature` | `localizations.spec.ts`                |
 | Courses                                | `courses.feature`       | `courses.spec.ts`                      |
 | Ratings management                     | —                       | `ratings.spec.ts`                      |
-| Sections and lecture status URLs       | `curriculum.feature`    | —                                      |
+| Sections and lecture status URLs       | `curriculum.feature`    | `curriculum.spec.ts`                   |
 | Wallet transactions and CSV exports    | `records.feature`       | —                                      |
 | Enrollment report                      | —                       | `enrollments.spec.ts`                  |
 
@@ -100,3 +100,7 @@ Ratings regressions cover admin-only access, responsive navigation, pagination,
 search, empty results, all filter parameters and sorting choices, draft reset,
 detail and list recovery, comment/response edits and clearing, deletion and
 last-page recovery, pending mutation locks, keyboard focus, and option retries.
+
+Curriculum regressions cover section and lecture list/detail recovery, failed
+moderation with draft retention and retry, deleted records, pagination, search
+and empty results, filter request payloads, cancelled drafts, and clearing filters.

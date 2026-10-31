@@ -1,3 +1,4 @@
+import { Pagination } from '../../components/ui/Pagination';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Navigate, useSearchParams } from 'react-router-dom';
@@ -749,39 +750,21 @@ export default function CurriculumPage({
               })}
             </div>
           )}
-          <footer className="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-[#858697]">
-            <p>
-              Showing {(pageNumber - 1) * 20 + (result.results.length ? 1 : 0)}–
-              {Math.min(pageNumber * 20, result.count)} of {result.count} {kind}
-            </p>
-            <div className="flex items-center gap-3">
-              <Button
-                disabled={!result.previous || listQuery.isFetching}
-                onClick={() =>
-                  setParams((current) => {
-                    const next = new URLSearchParams(current);
-                    next.set('page', String(Math.max(1, pageNumber - 1)));
-                    return next;
-                  })
-                }
-              >
-                Previous
-              </Button>
-              <span>Page {page === 'last' ? 'last' : page}</span>
-              <Button
-                disabled={!result.next || listQuery.isFetching}
-                onClick={() =>
-                  setParams((current) => {
-                    const next = new URLSearchParams(current);
-                    next.set('page', String(pageNumber + 1));
-                    return next;
-                  })
-                }
-              >
-                Next
-              </Button>
-            </div>
-          </footer>
+          <Pagination
+            page={pageNumber}
+            count={result.count}
+            visibleCount={result.results.length}
+            hasNext={!!result.next}
+            pending={listQuery.isFetching}
+            label={`${kind} pagination`}
+            onPageChange={(value) =>
+              setParams((current) => {
+                const next = new URLSearchParams(current);
+                next.set('page', String(value));
+                return next;
+              })
+            }
+          />
         </>
       )}
 

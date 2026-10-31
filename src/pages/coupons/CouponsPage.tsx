@@ -1,3 +1,4 @@
+import { Pagination } from '../../components/ui/Pagination';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -811,31 +812,15 @@ export default function CouponsPage() {
               );
             })}
           </div>
-          <div className="category-pagination">
-            <p>
-              Showing {(page - 1) * 9 + 1}–{Math.min(page * 9, data.count)} of{' '}
-              {data.count} coupons
-            </p>
-            <div>
-              <button
-                className="category-secondary"
-                disabled={!data.previous}
-                onClick={() => setPage(page - 1)}
-              >
-                Previous
-              </button>
-              <span>
-                Page {page} of {Math.max(1, Math.ceil(data.count / 9))}
-              </span>
-              <button
-                className="category-secondary"
-                disabled={!data.next}
-                onClick={() => setPage(page + 1)}
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          <Pagination
+            page={page}
+            count={data.count}
+            pageSize={9}
+            visibleCount={data.results.length}
+            hasNext={!!data.next}
+            onPageChange={setPage}
+            label="Coupons pagination"
+          />
         </>
       )}
       {editor && (

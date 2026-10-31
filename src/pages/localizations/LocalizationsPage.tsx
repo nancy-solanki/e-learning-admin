@@ -1,3 +1,4 @@
+import { Pagination } from '../../components/ui/Pagination';
 import { useMemo } from 'react';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
@@ -516,31 +517,16 @@ export default function LocalizationsPage() {
           </div>
         )}
         {data && data.count > 0 && (
-          <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-            <p>
-              Showing {(page - 1) * pageSize + 1}–
-              {Math.min(page * pageSize, data.count)} of {data.count}
-            </p>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                disabled={!data.previous || listQuery.isFetching}
-                onClick={() => setPage((current) => current - 1)}
-                className="rounded-lg border border-slate-200 px-3 py-2 font-semibold text-slate-700 disabled:opacity-40"
-              >
-                Previous
-              </button>
-              <span>Page {page}</span>
-              <button
-                type="button"
-                disabled={!data.next || listQuery.isFetching}
-                onClick={() => setPage((current) => current + 1)}
-                className="rounded-lg border border-slate-200 px-3 py-2 font-semibold text-slate-700 disabled:opacity-40"
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          <Pagination
+            page={page}
+            count={data.count}
+            pageSize={pageSize}
+            visibleCount={data.results.length}
+            hasNext={!!data.next}
+            pending={listQuery.isFetching}
+            onPageChange={setPage}
+            label="Localizations pagination"
+          />
         )}
       </div>
 

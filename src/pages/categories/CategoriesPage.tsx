@@ -1,3 +1,4 @@
+import { Pagination } from '../../components/ui/Pagination';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { Input, Textarea, Field } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
@@ -528,31 +529,15 @@ export default function CategoriesPage() {
               </article>
             ))}
           </div>
-          <div className="category-pagination">
-            <p>
-              Showing {(page - 1) * 9 + 1}–{Math.min(page * 9, data.count)} of{' '}
-              {data.count} categories
-            </p>
-            <div>
-              <button
-                className="category-secondary"
-                disabled={!data.previous}
-                onClick={() => setPage((v) => v - 1)}
-              >
-                Previous
-              </button>
-              <span>
-                Page {page} of {Math.max(1, Math.ceil(data.count / 9))}
-              </span>
-              <button
-                className="category-secondary"
-                disabled={!data.next}
-                onClick={() => setPage((v) => v + 1)}
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          <Pagination
+            page={page}
+            count={data.count}
+            pageSize={9}
+            visibleCount={data.results.length}
+            hasNext={!!data.next}
+            onPageChange={setPage}
+            label="Categories pagination"
+          />
         </>
       )}
       {editor && (

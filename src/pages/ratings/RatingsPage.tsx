@@ -1,3 +1,4 @@
+import { Pagination } from '../../components/ui/Pagination';
 import { useEffect, useRef, useState } from 'react';
 import { apiErrorMessage } from '../../api/errors';
 import type {
@@ -422,30 +423,16 @@ export default function RatingsPage() {
                 </tbody>
               </table>
             </div>
-            <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-4 text-sm text-slate-500">
-              <span>
-                Showing {(page - 1) * pageSize + 1}–
-                {Math.min(page * pageSize, data.count)} of {data.count}
-              </span>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  disabled={!data.previous || query.isFetching}
-                  onClick={() => setPage((current) => current - 1)}
-                  className="rounded-lg border border-slate-200 px-3 py-2 font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Previous
-                </button>
-                <button
-                  type="button"
-                  disabled={!data.next || query.isFetching}
-                  onClick={() => setPage((current) => current + 1)}
-                  className="rounded-lg border border-slate-200 px-3 py-2 font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Next
-                </button>
-              </div>
-            </footer>
+            <Pagination
+              page={page}
+              count={data.count}
+              pageSize={pageSize}
+              visibleCount={data.results.length}
+              hasNext={!!data.next}
+              pending={query.isFetching}
+              onPageChange={setPage}
+              label="Ratings pagination"
+            />
           </>
         )}
       </div>

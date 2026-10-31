@@ -1,3 +1,4 @@
+import { Pagination } from '../../components/ui/Pagination';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { useMemo, useState } from 'react';
@@ -286,9 +287,7 @@ export default function WalletsPage() {
   const data = overview.data;
   const currency = data?.currency;
   const result = transactions.data;
-  const pageCount = result
-    ? Math.max(1, Math.ceil(result.count / pageSize))
-    : 0;
+
   const filtered = Boolean(debouncedSearch || type || status);
   const historyStart = data?.period.start ?? range.start;
   const historyEnd = data?.period.end ?? range.end;
@@ -650,31 +649,16 @@ export default function WalletsPage() {
           )}
         </div>
       )}
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-        <p role="status" className="text-xs text-[#858697]">
-          Showing {result?.results.length ?? 0} of {result?.count ?? 0}{' '}
-          transactions
-        </p>
-        {pageCount > 1 && (
-          <div className="flex items-center gap-3">
-            <Button
-              disabled={!result?.previous || transactions.isFetching}
-              onClick={() => setPage((current) => Math.max(1, current - 1))}
-            >
-              Previous
-            </Button>
-            <span className="text-xs text-[#74798b]">
-              Page {page} of {pageCount}
-            </span>
-            <Button
-              disabled={!result?.next || transactions.isFetching}
-              onClick={() => setPage((current) => current + 1)}
-            >
-              Next
-            </Button>
-          </div>
-        )}
-      </div>
+      <Pagination
+        page={page}
+        count={result?.count ?? 0}
+        pageSize={pageSize}
+        visibleCount={result?.results.length ?? 0}
+        hasNext={!!result?.next}
+        pending={transactions.isFetching}
+        onPageChange={setPage}
+        label="Wallet transactions pagination"
+      />
       {selected && currency && user?.id && (
         <TransactionDetails
           id={selected.id}

@@ -1,0 +1,111 @@
+.app-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  border-top: 1px solid #eceaf2;
+  color: #828698;
+  font-size: 12px;
+}
+.app-pagination-summary {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.app-pagination-summary strong {
+  color: #55566a;
+  font-weight: 600;
+}
+.app-pagination-controls,
+.app-pagination-pages {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.app-pagination-controls {
+  gap: 12px;
+}
+.app-pagination button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 36px;
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: #686b80;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+.app-pagination button:hover:not(:disabled) {
+  background: #f1edfc;
+  color: var(--color-brand);
+}
+.app-pagination button:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 3px;
+}
+.app-pagination button[aria-current='page'] {
+  background: var(--color-brand);
+  color: white;
+  box-shadow: 0 3px 8px #7054d826;
+}
+.app-pagination button[aria-current='page']:hover {
+  background: var(--color-brand-dark, #5940b9);
+  color: white;
+}
+.app-pagination button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.app-pagination .app-pagination-arrow {
+  padding: 0 10px;
+  border-color: #e7e5ef;
+  background: white;
+}
+.app-pagination svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.app-pagination-ellipsis {
+  width: 24px;
+  text-align: center;
+}
+.app-pagination-mobile {
+  display: none;
+}
+@media (max-width: 640px) {
+  .app-pagination {
+    padding: 18px 12px;
+    justify-content: center;
+    gap: 12px;
+  }
+  .app-pagination-summary {
+    width: 100%;
+    text-align: center;
+  }
+  .app-pagination-pages {
+    display: none;
+  }
+  .app-pagination-mobile {
+    display: inline;
+    font-variant-numeric: tabular-nums;
+  }
+  .app-pagination-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

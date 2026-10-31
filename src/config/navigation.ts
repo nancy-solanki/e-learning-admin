@@ -62,5 +62,5 @@ export const instructorNavigation: NavigationItem[] = [
   { label: 'Ratings', icon: StarIcon, path: '/ratings' },
   { label: 'Coupons', icon: CouponIcon, path: '/coupons' },
   { label: 'Enrollments', icon: EnrollmentIcon, path: '/enrollments' },
-  { label: 'Bank Account', icon: BankIcon, path: '/wallets' },
+  { label: 'Bank Accounts', icon: BankIcon, path: '/bank-accounts' },
 ];

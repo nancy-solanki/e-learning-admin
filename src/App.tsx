@@ -30,6 +30,7 @@ import LocalizationsPage from './pages/localizations/LocalizationsPage';
 import CouponsPage from './pages/coupons/CouponsPage';
 import CoursesPage from './pages/courses/CoursesPage';
 import CurriculumPage from './pages/curriculum/CurriculumPage';
+import BankAccountsPage from './pages/bank/BankAccountsPage';
 import WalletsPage from './pages/wallets/WalletsPage';
 import EnrollmentsPage from './pages/enrollments/EnrollmentsPage';
 import RatingsPage from './pages/ratings/RatingsPage';
@@ -110,7 +111,7 @@ function PublicRoute() {
   const from: unknown = location.state?.from;
   const destination =
     typeof from === 'string' &&
-    /^\/(?:users|profile|categories|coupons|courses|sections|lectures|wallets|enrollments|localizations|ratings)(?:\?|$)/.test(
+    /^\/(?:users|profile|categories|coupons|courses|sections|lectures|wallets|bank-accounts|enrollments|localizations|ratings)(?:\?|$)/.test(
       from,
     )
       ? from
@@ -158,6 +159,7 @@ export default function App() {
               <Route index element={<HomePage />} />
               <Route path="coupons" element={<CouponsPage />} />
               <Route path="courses" element={<CoursesPage />} />
+              <Route path="bank-accounts" element={<BankAccountsPage />} />
               <Route path="wallets" element={<WalletsPage />} />
               <Route
                 path="sections"

@@ -1,0 +1,113 @@
+.bank-collection-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.bank-collection-heading h2 {
+  font-size: 18px;
+  font-weight: 750;
+}
+.bank-collection-heading h2 span {
+  margin-left: 8px;
+  border-radius: 8px;
+  background: #eeebfa;
+  padding: 3px 8px;
+  color: var(--color-brand);
+  font-size: 12px;
+}
+.bank-collection-heading p {
+  color: #828698;
+  font-size: 12px;
+}
+.bank-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.bank-toolbar .category-search {
+  min-width: 260px;
+}
+.bank-toolbar .ui-input {
+  width: 100%;
+}
+.bank-toolbar .ui-select {
+  min-width: 170px;
+}
+.bank-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+  margin-bottom: 24px;
+}
+.bank-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #e7e5ef;
+  border-radius: 20px;
+  background: white;
+  box-shadow: 0 3px 10px #29203903;
+}
+.bank-card-content {
+  flex: 1;
+  padding: 24px;
+}
+.bank-card-icon {
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  color: var(--color-brand);
+  background: #f1edfc;
+}
+.bank-card-name {
+  font-size: 17px;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+.bank-account-number {
+  margin: 18px 0 10px;
+  font-family: monospace;
+  font-size: 20px;
+  letter-spacing: 2px;
+  color: #55566a;
+}
+.bank-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-top: 1px solid #f0eef5;
+  background: #fcfbfe;
+  padding: 16px 20px;
+}
+.bank-card-actions button {
+  padding: 8px 10px;
+  font-size: 12px;
+  border-radius: 10px;
+}
+@media (max-width: 1200px) {
+  .bank-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .bank-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bank-collection-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .bank-toolbar .category-search {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+  .bank-toolbar > .ui-select {
+    flex: 1;
+    min-width: 0;
+  }
+}

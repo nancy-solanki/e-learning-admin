@@ -17,11 +17,17 @@ export class Controls {
   }
 
   async openNavigation() {
-    const menu = this.page.getByRole('button', {
-      name: 'Open menu',
-      exact: true,
+    const menu = this.page.locator('button[aria-controls="admin-navigation"]');
+    if (
+      (await menu.isVisible()) &&
+      (await menu.getAttribute('aria-expanded')) !== 'true'
+    ) {
+      await menu.click();
+    }
+    const navigation = this.page.getByRole('navigation', {
+      name: 'Main navigation',
     });
-    if (await menu.isVisible()) await menu.click();
+    if (await navigation.count()) await expect(navigation).toBeVisible();
   }
 
   async signIn(email: string, password: string) {

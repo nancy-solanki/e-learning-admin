@@ -98,7 +98,7 @@ test('invalid course URL values are ignored and dialog close restores focus', as
   ).toBeVisible();
   expect(Object.fromEntries(state.requests.at(-1)!)).toEqual({ page: '1' });
   await expect(
-    page.getByRole('button', { name: 'Previous', exact: true }),
+    page.getByRole('button', { name: 'Previous page', exact: true }),
   ).toHaveCount(0);
   await expect(page.locator('article').nth(2)).toContainText('Deleted');
   const view = page.getByRole('button', { name: 'View course' }).first();

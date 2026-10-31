@@ -57,7 +57,9 @@ export default function AdminLayout() {
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition ${isActive ? 'bg-[#635bce]/20 text-white' : 'text-[#bbc0d1] hover:bg-white/5 hover:text-white'}`;
   const navigation = isAdmin(user)
-    ? adminNavigation
+    ? adminNavigation.filter(
+        (item) => item.path !== '/enrollments' || user?.role?.includes('admin'),
+      )
     : user?.role?.some(
           (role) => role.toLowerCase().replace(/^role_/, '') === 'instructor',
         )

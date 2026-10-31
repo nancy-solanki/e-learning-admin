@@ -109,12 +109,18 @@ test('wallet paginates server results and resets to page one on filter change', 
   }));
   const state = await mockWallet(page, { rows, pageSize: 20 });
   await page.goto('/wallets');
-  await expect(page.getByText('Page 1 of 2')).toBeVisible();
-  await page.getByRole('button', { name: 'Next', exact: true }).click();
-  await expect(page.getByText('Page 2 of 2')).toBeVisible();
+  await expect(page.locator('button[aria-current="page"]')).toHaveAttribute(
+    'aria-label',
+    'Page 1',
+  );
+  await page.getByRole('button', { name: 'Next page', exact: true }).click();
+  await expect(page.locator('button[aria-current="page"]')).toHaveAttribute(
+    'aria-label',
+    'Page 2',
+  );
   expect(state.listQueries.at(-1)?.get('page')).toBe('2');
   await controls.choose('Transaction type', 'Earning');
-  await expect(page.getByText('Showing 10 of 10 transactions')).toBeVisible();
+  await expect(page.getByText('1–10 of 10 results')).toBeVisible();
   expect(state.listQueries.at(-1)?.get('page')).toBe('1');
 });
 

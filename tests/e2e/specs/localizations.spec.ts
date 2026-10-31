@@ -13,8 +13,14 @@ test('sidebar localization link opens the localization page', async ({
   );
 
   await page.goto('/');
+  await expect(
+    page.getByRole('heading', { name: 'Welcome to your dashboard' }),
+  ).toBeVisible();
   await controls.openNavigation();
-  await page.getByText('Site', { exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .getByText('Site', { exact: true })
+    .click();
   await page.getByRole('link', { name: 'Localizations', exact: true }).click();
 
   await expect(page).toHaveURL(/\/localizations$/);
@@ -113,13 +119,19 @@ test('returns to the previous page when a toggle empties the current page', asyn
   await controls.choose('Filter by record status', 'Active');
   await activePage;
   await page.getByRole('button', { name: 'Next' }).click();
-  await expect(page.getByText('Page 2', { exact: true })).toBeVisible();
+  await expect(page.locator('button[aria-current="page"]')).toHaveAttribute(
+    'aria-label',
+    'Page 2',
+  );
   await page
     .getByRole('button', { name: 'Delete Language 20 — Country 20' })
     .click();
   await page
     .getByRole('button', { name: 'Delete localization', exact: true })
     .click();
-  await expect(page.getByText('Page 1', { exact: true })).toBeVisible();
+  await expect(page.locator('button[aria-current="page"]')).toHaveAttribute(
+    'aria-label',
+    'Page 1',
+  );
   await expect(page.getByText('20 total')).toBeVisible();
 });

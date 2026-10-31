@@ -22,6 +22,7 @@ Feature: Route access and session boundaries
 
   Scenario Outline: Instructor pages reject a replacement learner session at <path>
     Given I am signed in as instructor
+    And I prepare the admin section and lecture APIs
     When I open "<path>"
     Then the URL is "<path>"
     And I see the heading "<heading>"

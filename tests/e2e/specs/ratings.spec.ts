@@ -32,22 +32,24 @@ test('ratings navigation, server pagination, search and empty results', async ({
   await page.getByRole('link', { name: 'Ratings', exact: true }).click();
   await expect(page.getByRole('row')).toHaveCount(21);
   await expect(
-    page.getByRole('button', { name: 'Previous', exact: true }),
+    page.getByRole('button', { name: 'Previous page', exact: true }),
   ).toBeDisabled();
   await expect
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
     .toBeLessThanOrEqual(page.viewportSize()!.width);
-  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await page.getByRole('button', { name: 'Next page', exact: true }).click();
   await expect(
     page.getByRole('cell', { name: 'Reviewer 21', exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Next', exact: true }),
+    page.getByRole('button', { name: 'Next page', exact: true }),
   ).toBeDisabled();
-  await page.getByRole('button', { name: 'Previous', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Previous page', exact: true })
+    .click();
   await expect(page.getByRole('row')).toHaveCount(21);
-  await page.getByRole('button', { name: 'Next', exact: true }).click();
-  await expect(page.getByText('Showing 21–21 of 21')).toBeVisible();
+  await page.getByRole('button', { name: 'Next page', exact: true }).click();
+  await expect(page.getByText('21–21 of 21 results')).toBeVisible();
   await page.getByLabel('Search ratings').fill('  Review 1  ');
   await expect(page.getByRole('row')).toHaveCount(12);
   await expect
@@ -71,8 +73,8 @@ test('rating filters send IDs, scores, dates and ordering and reset pagination',
   await session(page);
   const state = await mockRatings(page);
   await page.goto('/ratings');
-  await page.getByRole('button', { name: 'Next', exact: true }).click();
-  await expect(page.getByText('Showing 21–21 of 21')).toBeVisible();
+  await page.getByRole('button', { name: 'Next page', exact: true }).click();
+  await expect(page.getByText('21–21 of 21 results')).toBeVisible();
   await page.getByRole('button', { name: 'Filters', exact: true }).click();
   const drawer = page.getByRole('dialog', { name: 'Filter ratings' });
   await controls.choose('Course', 'Python Basics', drawer);
@@ -105,7 +107,7 @@ test('rating filters send IDs, scores, dates and ordering and reset pagination',
     page.getByRole('button', { name: 'Clear filters', exact: true }),
   ).toBeDisabled();
   await expect(
-    page.getByRole('button', { name: 'Previous', exact: true }),
+    page.getByRole('button', { name: 'Previous page', exact: true }),
   ).toBeDisabled();
 });
 
@@ -296,7 +298,7 @@ test('deleting the last rating on page two returns to the previous page', async 
   await session(page);
   await mockRatings(page);
   await page.goto('/ratings');
-  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await page.getByRole('button', { name: 'Next page', exact: true }).click();
   await page
     .getByRole('button', { name: 'Delete rating by Reviewer 21', exact: true })
     .click();
@@ -304,9 +306,9 @@ test('deleting the last rating on page two returns to the previous page', async 
     .getByRole('dialog')
     .getByRole('button', { name: 'Delete rating', exact: true })
     .click();
-  await expect(page.getByText('Showing 1–20 of 20')).toBeVisible();
+  await expect(page.getByText('1–20 of 20 results')).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Next', exact: true }),
+    page.getByRole('button', { name: 'Next page', exact: true }),
   ).toBeDisabled();
 });
 

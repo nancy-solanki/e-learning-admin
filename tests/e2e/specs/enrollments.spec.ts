@@ -96,8 +96,11 @@ test('admin report filters, pagination, truthful progress, modal and export', as
   await modal.getByRole('button', { name: 'Close dialog' }).click();
   await view.click();
   await modal.getByRole('button', { name: 'Close', exact: true }).click();
-  await page.getByRole('button', { name: 'Next', exact: true }).click();
-  await expect(page.getByText('Page 2', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Next page', exact: true }).click();
+  await expect(page.locator('button[aria-current="page"]')).toHaveAttribute(
+    'aria-label',
+    'Page 2',
+  );
   for (const search of [id, 'Emma Wilson', 'Design foundations']) {
     await page
       .getByRole('textbox', { name: 'Search enrollments' })
@@ -175,6 +178,8 @@ for (const role of ['learner', 'instructor', 'staff']) {
         page.getByRole('heading', { name: 'Welcome to your dashboard' }),
       ).toBeVisible();
     }
+    const menu = page.getByRole('button', { name: 'Open menu', exact: true });
+    if (await menu.isVisible()) await menu.click();
     await expect(
       page.getByRole('link', { name: 'Enrollments', exact: true }),
     ).toHaveCount(0);

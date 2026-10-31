@@ -7,23 +7,31 @@ for (const kind of ['section', 'lecture'] as const) {
 
   test(`${plural}: instructors use direct navigation and live curriculum details`, async ({
     page,
+    controls,
   }) => {
     await sessionAs(page, 'instructor');
     const state = await mockCurriculum(page);
     await page.goto(`/${plural}`);
     await expect(page.locator('article')).toContainText(state[kind].title);
+    await controls.openNavigation();
     const navigation = page.getByRole('navigation', {
       name: 'Main navigation',
     });
     await expect(navigation.getByRole('link')).toHaveText([
       'Home',
       'Courses',
-      'Ratings',
       'Coupons',
-      'Enrollments',
-      'Bank Account',
+      'Bank Accounts',
     ]);
     await expect(navigation.locator('details')).toHaveCount(0);
+    const closeMenu = page.getByRole('button', {
+      name: 'Close menu',
+      exact: true,
+    });
+    if (await closeMenu.isVisible()) {
+      await navigation.getByRole('link').first().focus();
+      await page.keyboard.press('Escape');
+    }
     await expect(page.getByText('Sample data · Static preview')).toHaveCount(0);
     await page.getByRole('button', { name: 'View details' }).click();
     await expect(
@@ -145,17 +153,19 @@ for (const kind of ['section', 'lecture'] as const) {
     await page.goto(`/${plural}`);
     await expect(page.locator('article')).toHaveCount(20);
     await expect(
-      page.getByRole('button', { name: 'Previous', exact: true }),
+      page.getByRole('button', { name: 'Previous page', exact: true }),
     ).toBeDisabled();
-    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    await page.getByRole('button', { name: 'Next page', exact: true }).click();
     await expect(page.locator('article')).toHaveCount(1);
     await expect(page).toHaveURL(new RegExp(`/${plural}\\?page=2$`));
     await expect(
-      page.getByRole('button', { name: 'Next', exact: true }),
+      page.getByRole('button', { name: 'Next page', exact: true }),
     ).toBeDisabled();
-    await page.getByRole('button', { name: 'Previous', exact: true }).click();
+    await page
+      .getByRole('button', { name: 'Previous page', exact: true })
+      .click();
     await expect(page.locator('article')).toHaveCount(20);
-    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    await page.getByRole('button', { name: 'Next page', exact: true }).click();
     await expect(page.locator('article')).toHaveCount(1);
     await page
       .getByRole('textbox', { name: `Search ${plural}` })

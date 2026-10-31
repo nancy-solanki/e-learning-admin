@@ -59,8 +59,6 @@ export const adminNavigation: NavigationItem[] = [
 
 export const instructorNavigation: NavigationItem[] = [
   { label: 'Courses', icon: BookIcon, path: '/courses' },
-  { label: 'Ratings', icon: StarIcon, path: '/ratings' },
   { label: 'Coupons', icon: CouponIcon, path: '/coupons' },
-  { label: 'Enrollments', icon: EnrollmentIcon, path: '/enrollments' },
   { label: 'Bank Accounts', icon: BankIcon, path: '/bank-accounts' },
 ];

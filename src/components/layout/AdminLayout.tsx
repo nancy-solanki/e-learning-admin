@@ -210,8 +210,8 @@ export default function AdminLayout() {
           </div>
         </div>
       </aside>
-      <div className="min-w-0 lg:pl-60">
-        <header className="sticky top-0 z-20 flex h-[70px] items-center justify-between gap-3 border-b border-[#eef0f5] bg-white px-5 sm:px-7">
+      <div className="flex min-h-dvh min-w-0 flex-col lg:pl-60">
+        <header className="sticky top-0 z-20 flex h-[70px] shrink-0 items-center justify-between gap-3 border-b border-[#eef0f5] bg-white px-5 sm:px-7">
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
@@ -244,7 +244,7 @@ export default function AdminLayout() {
             />
           </div>
         </header>
-        <main className="mx-auto w-full max-w-[1280px] px-4 py-8 sm:px-8 sm:py-12">
+        <main className="mx-auto w-full max-w-[1280px] flex-1 px-4 py-8 sm:px-8 sm:py-12">
           {error && (
             <p
               role="alert"
@@ -254,10 +254,10 @@ export default function AdminLayout() {
             </p>
           )}
           <Outlet />
-          <footer className="mt-12 text-center text-xs text-[#9ba3b5]">
-            Learninfy · Learning, thoughtfully managed.
-          </footer>
         </main>
+        <footer className="shrink-0 px-4 pb-8 pt-4 text-center text-xs text-[#9ba3b5] sm:px-8 sm:pb-12">
+          Learninfy · Learning, thoughtfully managed.
+        </footer>
       </div>
     </div>
   );

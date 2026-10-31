@@ -1,9 +1,35 @@
 import { test, expect } from '../fixtures/test';
-import { session } from '../support/session';
+import { session, sessionAs } from '../support/session';
 import { mockCurriculum } from '../support/curriculum-api';
 
 for (const kind of ['section', 'lecture'] as const) {
   const plural = `${kind}s`;
+
+  test(`${plural}: instructors use direct navigation and live curriculum details`, async ({
+    page,
+  }) => {
+    await sessionAs(page, 'instructor');
+    const state = await mockCurriculum(page);
+    await page.goto(`/${plural}`);
+    await expect(page.locator('article')).toContainText(state[kind].title);
+    const navigation = page.getByRole('navigation', {
+      name: 'Main navigation',
+    });
+    await expect(navigation.getByRole('link')).toHaveText([
+      'Home',
+      'Courses',
+      'Ratings',
+      'Coupons',
+      'Enrollments',
+      'Bank Account',
+    ]);
+    await expect(navigation.locator('details')).toHaveCount(0);
+    await expect(page.getByText('Sample data · Static preview')).toHaveCount(0);
+    await page.getByRole('button', { name: 'View details' }).click();
+    await expect(
+      page.getByRole('dialog', { name: state[kind].title }),
+    ).toBeVisible();
+  });
 
   test(`${plural}: list failures can be retried`, async ({ page }) => {
     await session(page);

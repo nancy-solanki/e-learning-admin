@@ -164,3 +164,9 @@ export const TrashIcon = (props: IconProps) => (
     <path d="M3 6h18M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M5 6l1 14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1l1-14M10 10v7m4-7v7" />
   </Icon>
 );
+
+export const BankIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="m3 9 9-6 9 6H3ZM5 10v8m5-8v8m4-8v8m5-8v8M3 21h18M4 18h16" />
+  </Icon>
+);

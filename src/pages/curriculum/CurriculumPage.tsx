@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import {
   BookIcon,
   LayersIcon,
@@ -39,7 +39,6 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { isAdmin } from '../../lib/permissions';
 import { queryClient } from '../../state/queryClient';
 import { useCurrentUser } from '../../state/profile';
-import InstructorCurriculumPage from './InstructorCurriculumPage';
 
 const sectionStatuses: SectionStatus[] = ['published', 'draft', 'rejected'];
 const lectureStatuses: LectureStatus[] = ['published', 'draft', 'rejected'];
@@ -333,7 +332,17 @@ export default function CurriculumPage({
   kind: 'sections' | 'lectures';
 }) {
   const { data: user, isPending: profilePending } = useCurrentUser();
-  const allowed = isAdmin(user ?? null);
+  const allowed =
+    isAdmin(user ?? null) ||
+    Boolean(
+      user?.role?.some(
+        (role) =>
+          role
+            .trim()
+            .toLowerCase()
+            .replace(/^role_/, '') === 'instructor',
+      ),
+    );
   const lecture = kind === 'lectures';
   const [params, setParams] = useSearchParams();
   const pageValue = params.get('page');
@@ -500,7 +509,7 @@ export default function CurriculumPage({
   });
 
   if (profilePending) return <p role="status">Checking access…</p>;
-  if (!allowed) return <InstructorCurriculumPage kind={kind} />;
+  if (!allowed) return <Navigate to="/" replace />;
 
   const result = listQuery.data;
   const pageNumber =

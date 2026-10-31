@@ -1,6 +1,7 @@
 import type { ComponentType, SVGProps } from 'react';
 
 import {
+  BankIcon,
   BookIcon,
   CategoryIcon,
   CouponIcon,
@@ -57,21 +58,9 @@ export const adminNavigation: NavigationItem[] = [
 ];
 
 export const instructorNavigation: NavigationItem[] = [
-  { label: 'Coupons', icon: CouponIcon, path: '/coupons' },
   { label: 'Courses', icon: BookIcon, path: '/courses' },
-  {
-    label: 'Sections',
-    icon: LayersIcon,
-    submenu: [{ label: 'All Sections', path: '/sections' }],
-  },
-  {
-    label: 'Lectures',
-    icon: LectureIcon,
-    submenu: [
-      { label: 'All Lectures', path: '/lectures' },
-      { label: 'Published Lectures', path: '/lectures?status=Published' },
-      { label: 'Draft Lectures', path: '/lectures?status=Draft' },
-    ],
-  },
-  { label: 'Wallets', icon: WalletIcon, path: '/wallets' },
+  { label: 'Ratings', icon: StarIcon, path: '/ratings' },
+  { label: 'Coupons', icon: CouponIcon, path: '/coupons' },
+  { label: 'Enrollments', icon: EnrollmentIcon, path: '/enrollments' },
+  { label: 'Bank Account', icon: BankIcon, path: '/wallets' },
 ];

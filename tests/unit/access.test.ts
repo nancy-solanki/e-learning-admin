@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { User } from '../../src/types/auth';
 import {
+  canAccessPath,
   canAccessPage,
   getAccessibleDestination,
   resolveAppRole,
@@ -81,6 +82,7 @@ describe('application role access', () => {
 
   it('preserves allowed destinations and rejects inaccessible or unknown ones', () => {
     const instructor = { ...user, role: ['instructor'] };
+    const admin = { ...user, role: ['admin'] };
     expect(getAccessibleDestination(instructor, '/courses?search=design')).toBe(
       '/courses?search=design',
     );
@@ -91,5 +93,14 @@ describe('application role access', () => {
     expect(getAccessibleDestination(instructor, 'https://example.com')).toBe(
       '/',
     );
+    expect(canAccessPath('admin', '/courses/course-id/curriculum')).toBe(false);
+    expect(canAccessPath('instructor', '/courses/course-id/curriculum')).toBe(
+      true,
+    );
+    expect(canAccessPath('admin', '/courses/course-id/edit')).toBe(false);
+    expect(canAccessPath('admin', '/courses/create')).toBe(false);
+    expect(
+      getAccessibleDestination(admin, '/courses/course-id/curriculum'),
+    ).toBe('/');
   });
 });

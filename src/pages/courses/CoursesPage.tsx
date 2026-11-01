@@ -6,22 +6,19 @@ import {
 } from '../../api/services/options';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { BookIcon, CloseIcon } from '../../components/icons/AdminIcons';
 import { Button } from '../../components/ui/Button';
-import { StatusModerationDialog } from '../../components/ui/StatusModerationDialog';
 import { Drawer } from '../../components/ui/Drawer';
 import { Select } from '../../components/ui/Select';
 import { OrderingSelect } from '../../components/ui/OrderingSelect';
 import { Field, Input } from '../../components/ui/Input';
 import { useAccessState } from '../../state/access';
 import { apiErrorMessage } from '../../api/errors';
-import { queryClient } from '../../state/queryClient';
 import {
   getAdminCourse,
   listAdminCourses,
-  patchAdminCourse,
   type AdminCourse,
   type AdminCoursePage,
   type AdminCourseFilters,
@@ -72,15 +69,11 @@ function CourseDialog({
   course,
   instructorName,
   categoryNames,
-  canChangeStatus,
-  onChangeStatus,
   onClose,
 }: {
   course: AdminCourse;
   instructorName: string;
   categoryNames: string[];
-  canChangeStatus: boolean;
-  onChangeStatus: () => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -144,13 +137,6 @@ function CourseDialog({
           </div>
         ))}
       </dl>
-      {canChangeStatus && !course.deleted_at && (
-        <div className="mt-6 border-t border-slate-100 pt-5">
-          <Button variant="primary" onClick={onChangeStatus}>
-            Change status
-          </Button>
-        </div>
-      )}
     </dialog>
   );
 }
@@ -392,7 +378,6 @@ export default function CoursesPage() {
   }, [params, searchInput, ordering]);
   const search = useDebouncedValue(searchInput.trim());
   const [selected, setSelected] = useState<AdminCourse | null>(null);
-  const [moderating, setModerating] = useState<AdminCourse | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const detailQuery = useQuery({
     queryKey: ['admin-course', selected?.id],
@@ -408,25 +393,6 @@ export default function CoursesPage() {
     queryKey: ['course-filter-options', 'instructors'],
     queryFn: ({ signal }) => listInstructorOptions(signal),
     enabled: admin,
-  });
-  const updateMutation = useMutation({
-    mutationFn: ({
-      status,
-      reason,
-    }: {
-      status: CourseStatus;
-      reason: string;
-    }) => patchAdminCourse(moderating!.id, status, reason),
-    onSuccess: async (course) => {
-      queryClient.setQueryData(['admin-course', course.id], course);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['admin-courses'] }),
-        queryClient.invalidateQueries({
-          queryKey: ['admin-course', course.id],
-        }),
-      ]);
-      setModerating(null);
-    },
   });
   const query = useInfiniteQuery({
     queryKey: [
@@ -623,14 +589,34 @@ export default function CoursesPage() {
                     {course.total_articles} articles ·{' '}
                     {course.student_count.toLocaleString()} students
                   </p>
-                  <footer className="mt-auto flex items-center justify-between border-t border-slate-100 pt-4">
+                  <footer className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
                     <strong>{price(course)}</strong>
-                    <button
-                      className="text-sm text-[#8062bc]"
-                      onClick={() => setSelected(course)}
-                    >
-                      View course ↗
-                    </button>
+                    <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-x-4 gap-y-2">
+                      {instructor && !course.deleted_at && (
+                        <Link
+                          to={`/courses/${encodeURIComponent(course.id)}/edit`}
+                          aria-label={`Edit ${course.title}`}
+                          className="whitespace-nowrap text-sm text-[#8062bc] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                        >
+                          Edit
+                        </Link>
+                      )}
+                      {!course.deleted_at && instructor && (
+                        <Link
+                          to={`/courses/${encodeURIComponent(course.id)}/curriculum`}
+                          aria-label={`Manage curriculum for ${course.title}`}
+                          className="whitespace-nowrap text-sm text-[#8062bc] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                        >
+                          Manage curriculum
+                        </Link>
+                      )}
+                      <button
+                        className="whitespace-nowrap text-sm text-[#8062bc]"
+                        onClick={() => setSelected(course)}
+                      >
+                        View course ↗
+                      </button>
+                    </div>
                   </footer>
                 </div>
               </article>
@@ -687,36 +673,10 @@ export default function CoursesPage() {
                   categoryOptions.data?.find((option) => option.value === id)
                     ?.label ?? 'Category unavailable',
               )}
-              canChangeStatus={admin}
-              onChangeStatus={() => setModerating(detailQuery.data!)}
               onClose={() => setSelected(null)}
             />
           )}
         </>
-      )}
-      {admin && moderating && !moderating.deleted_at && (
-        <StatusModerationDialog
-          currentStatus={moderating.status}
-          statuses={statuses.map((value) => ({
-            value,
-            label: statusLabel(value),
-          }))}
-          rejectionReason
-          pending={updateMutation.isPending}
-          error={
-            updateMutation.error
-              ? apiErrorMessage(
-                  updateMutation.error,
-                  'Could not change course status.',
-                  { includeFieldErrors: true },
-                )
-              : null
-          }
-          onCancel={() => setModerating(null)}
-          onConfirm={(status, reason) =>
-            updateMutation.mutate({ status: status as CourseStatus, reason })
-          }
-        />
       )}
     </section>
   );

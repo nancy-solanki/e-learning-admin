@@ -1,10 +1,15 @@
+import { changedCourseFields, courseTextToHtml } from './courseEdit';
 import { useRef, useState, type FormEvent } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAccessState } from '../../state/access';
 import { listCategoryOptions } from '../../api/services/options';
 import {
   createInstructorCourse,
+  getAdminCourse,
+  patchInstructorCourse,
+  type AdminCourse,
+  type CreateCoursePayload,
   listCourseLocalizations,
 } from '../../api/services/courses';
 import { apiErrorMessage, apiFieldErrors } from '../../api/errors';
@@ -40,9 +45,29 @@ function plainText(html: string) {
     .forEach((node) => node.append('\n'));
   return document.body.textContent?.replace(/\u00a0/g, ' ').trim() ?? '';
 }
-function CourseForm() {
-  const [draft, setDraft] = useState(initial);
+function CourseForm({ course }: { course?: AdminCourse }) {
+  const [original] = useState(course);
+  const [draft, setDraft] = useState(() =>
+    original
+      ? {
+          ...initial,
+          title: original.title,
+          short_description: original.short_description,
+          categories: original.categories,
+          localization: original.localization ?? '',
+          tags: original.tags.map((tag) => tag.name),
+          price: String(original.price),
+          is_free: original.is_free,
+          long_description: courseTextToHtml(original.long_description),
+          requirements: courseTextToHtml(original.requirements),
+          learn_description_points: courseTextToHtml(
+            original.learn_description_points,
+          ),
+        }
+      : initial,
+  );
   const [step, setStep] = useState(0);
+  const [savedId, setSavedId] = useState(original?.id ?? '');
   const [error, setError] = useState('');
   const categories = useQuery({
     queryKey: ['course-filter-options', 'categories'],
@@ -56,20 +81,27 @@ function CourseForm() {
   const submitting = useRef(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const create = useMutation({
-    mutationFn: createInstructorCourse,
+    mutationFn: async (values: Partial<CreateCoursePayload>) => {
+      if (original) {
+        const changes = changedCourseFields(original, values);
+        return Object.keys(changes).length
+          ? patchInstructorCourse(original.id, changes)
+          : original;
+      }
+      return createInstructorCourse(values as CreateCoursePayload);
+    },
     onSuccess: (course) => {
+      setSavedId(course.id);
       queryClient.setQueryData(['admin-course', course.id], course);
       void queryClient.invalidateQueries({ queryKey: ['admin-courses'] });
       void queryClient.invalidateQueries({ queryKey: ['course-options'] });
+      void queryClient.invalidateQueries({ queryKey: ['course-edit'] });
       setStep(4);
     },
     onError: (error) => {
       setFieldErrors(apiFieldErrors(error));
       setError(
-        apiErrorMessage(
-          error,
-          'Could not create the course. Please try again.',
-        ),
+        apiErrorMessage(error, 'Could not save the course. Please try again.'),
       );
     },
   });
@@ -117,7 +149,10 @@ function CourseForm() {
       return;
     }
     if (step === 3) {
-      if (!plainText(draft.learn_description_points) || !draft.thumbnail) {
+      if (
+        !plainText(draft.learn_description_points) ||
+        (!draft.thumbnail && !original?.thumbnail)
+      ) {
         setError('Add learning points and a course thumbnail.');
         return;
       }
@@ -131,16 +166,30 @@ function CourseForm() {
         await create.mutateAsync({
           title: draft.title.trim(),
           short_description: draft.short_description.trim(),
-          long_description: plainText(draft.long_description),
-          requirements: plainText(draft.requirements),
-          learn_description_points: plainText(draft.learn_description_points),
+          long_description:
+            original &&
+            draft.long_description ===
+              courseTextToHtml(original.long_description)
+              ? original.long_description
+              : plainText(draft.long_description),
+          requirements:
+            original &&
+            draft.requirements === courseTextToHtml(original.requirements)
+              ? original.requirements
+              : plainText(draft.requirements),
+          learn_description_points:
+            original &&
+            draft.learn_description_points ===
+              courseTextToHtml(original.learn_description_points)
+              ? original.learn_description_points
+              : plainText(draft.learn_description_points),
           categories: draft.categories,
-          ...(draft.localization ? { localization: draft.localization } : {}),
+          localization: draft.localization || null,
           tags: draft.tags,
-          thumbnail: draft.thumbnail,
+          ...(draft.thumbnail ? { thumbnail: draft.thumbnail } : {}),
           is_free: draft.is_free,
           price: draft.is_free ? 0 : Number(draft.price),
-          status: 'draft',
+          ...(!original ? { status: 'draft' as const } : {}),
         });
       } catch {
         /* Mutation displays API errors without discarding the form. */
@@ -160,7 +209,8 @@ function CourseForm() {
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="mb-2 font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
-            Create course<span className="text-brand">.</span>
+            {original ? 'Edit course' : 'Create course'}
+            <span className="text-brand">.</span>
           </h1>
           <p className="text-sm text-slate-500">
             Turn what you know into something worth learning.
@@ -168,7 +218,13 @@ function CourseForm() {
         </div>
         <span className="inline-flex items-center gap-2 rounded-full border border-violet-100 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-brand">
           <span className="size-1.5 rounded-full bg-brand" />
-          {step === 4 ? 'Draft created' : 'New course'}
+          {original
+            ? step === 4
+              ? 'Changes saved'
+              : 'Editing course'
+            : step === 4
+              ? 'Draft created'
+              : 'New course'}
         </span>
       </div>
       <div className="min-w-0">
@@ -213,12 +269,21 @@ function CourseForm() {
                 ✓
               </span>
               <h2 className="font-display text-2xl font-bold">
-                Course created successfully
+                {original
+                  ? 'Course updated successfully'
+                  : 'Course created successfully'}
               </h2>
               <p className="max-w-lg text-sm text-slate-500">
-                Your course has been saved as a draft. Curriculum management is
-                not yet available for instructors.
+                {original
+                  ? 'Your changes have been saved.'
+                  : 'Your course has been saved as a draft.'}
               </p>
+              <Link
+                to={`/courses/${encodeURIComponent(savedId)}/curriculum`}
+                className="inline-flex items-center justify-center rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              >
+                Manage curriculum
+              </Link>
               <Link to="/courses" className="text-sm text-brand">
                 Back to courses
               </Link>
@@ -426,6 +491,7 @@ function CourseForm() {
                     >
                       <ImageUpload
                         id="course-thumbnail"
+                        existingUrl={original?.thumbnail?.url}
                         value={draft.thumbnail}
                         onChange={(value) => update('thumbnail', value)}
                         onError={setError}
@@ -467,7 +533,9 @@ function CourseForm() {
                     {create.isPending
                       ? 'Saving…'
                       : step === 3
-                        ? 'Create course'
+                        ? original
+                          ? 'Save changes'
+                          : 'Create course'
                         : 'Continue →'}
                   </Button>
                 </div>
@@ -481,7 +549,33 @@ function CourseForm() {
 }
 export default function CreateCoursePage() {
   const access = useAccessState();
+  const { courseId } = useParams();
+  const detail = useQuery({
+    queryKey: ['course-edit', access.data?.id, courseId],
+    queryFn: () => getAdminCourse(courseId!),
+    enabled: access.isInstructor && Boolean(courseId),
+    staleTime: 0,
+  });
   if (access.isPending) return <p role="status">Loading course form…</p>;
   if (!access.isInstructor) return <Navigate to="/courses" replace />;
-  return <CourseForm key={access.data!.id} />;
+  if (courseId) {
+    if (detail.isPending) return <p role="status">Loading course details…</p>;
+    if (detail.isError)
+      return (
+        <div role="alert">
+          <p>{apiErrorMessage(detail.error, 'Could not load the course.')}</p>
+          <Button className="mt-4" onClick={() => void detail.refetch()}>
+            Retry
+          </Button>
+          <Link className="ml-4 text-brand" to="/courses">
+            Back to courses
+          </Link>
+        </div>
+      );
+    if (detail.data.deleted_at) return <Navigate to="/courses" replace />;
+    return (
+      <CourseForm key={`${access.data!.id}:${courseId}`} course={detail.data} />
+    );
+  }
+  return <CourseForm key={`${access.data!.id}:create`} />;
 }

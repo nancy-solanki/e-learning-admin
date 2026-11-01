@@ -3,11 +3,13 @@ import { Button } from './Button';
 export function ImageUpload({
   id,
   value,
+  existingUrl,
   onChange,
   onError,
 }: {
   id: string;
   value: File | null;
+  existingUrl?: string;
   onChange: (value: File | null) => void;
   onError: (message: string) => void;
 }) {
@@ -15,11 +17,14 @@ export function ImageUpload({
   const input = useRef<HTMLInputElement>(null);
   const preview = useRef<HTMLImageElement>(null);
   useEffect(() => {
-    if (!value) return;
+    if (!value) {
+      if (preview.current) preview.current.src = existingUrl ?? '';
+      return;
+    }
     const url = URL.createObjectURL(value);
     if (preview.current) preview.current.src = url;
     return () => URL.revokeObjectURL(url);
-  }, [value]);
+  }, [value, existingUrl]);
   function select(file?: File) {
     if (!file) return;
     if (
@@ -46,7 +51,7 @@ export function ImageUpload({
           event.target.value = '';
         }}
       />
-      {(!value || replacing) && (
+      {((!value && !existingUrl) || replacing) && (
         <>
           <button
             type="button"
@@ -65,7 +70,7 @@ export function ImageUpload({
           </p>
         </>
       )}
-      {value && (
+      {(value || existingUrl) && (
         <div className="mt-4 flex items-center gap-4">
           <img
             ref={preview}

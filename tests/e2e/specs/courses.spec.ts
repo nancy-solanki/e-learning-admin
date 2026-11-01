@@ -42,9 +42,44 @@ test('instructors see the create tile beside their own courses', async ({
   ).toBeDisabled();
   await expect(page.getByRole('heading', { name: 'Course 01' })).toBeVisible();
   expect(state.requests[0]?.get('instructor')).toBe('instructor-1');
-  await expect(
-    page.getByRole('button', { name: /^Filters/ }),
-  ).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Filters/ })).toHaveCount(0);
+});
+
+test('course card actions do not overlap at narrow viewport widths', async ({
+  page,
+}) => {
+  await session(page, {
+    id: 'instructor-1',
+    username: 'ada',
+    role: ['instructor'],
+  });
+  await mockCourses(page);
+  await page.setViewportSize({ width: 320, height: 900 });
+  await page.goto('/courses');
+
+  const actions = page
+    .locator('article')
+    .first()
+    .locator('footer a, footer button');
+  await expect(actions).toHaveCount(3);
+  const boxes = await actions.evaluateAll((elements) =>
+    elements.map((element) => {
+      const { x, y, width, height } = element.getBoundingClientRect();
+      return { x, y, width, height };
+    }),
+  );
+  for (let first = 0; first < boxes.length; first += 1) {
+    for (let second = first + 1; second < boxes.length; second += 1) {
+      const a = boxes[first];
+      const b = boxes[second];
+      expect(
+        a.x + a.width <= b.x ||
+          b.x + b.width <= a.x ||
+          a.y + a.height <= b.y ||
+          b.y + b.height <= a.y,
+      ).toBe(true);
+    }
+  }
 });
 
 test('course filters send selected IDs, numbers and explicit false values and reset pagination', async ({
@@ -150,31 +185,29 @@ test('invalid course URL values are ignored and dialog close restores focus', as
   ).toHaveCount(0);
 });
 
-test('course moderation sends status-only payloads and deleted records are read-only', async ({
+test('admins can view course details but cannot change course content or status', async ({
   page,
-  controls,
 }) => {
   await session(page);
   const state = await mockCourses(page);
   await page.goto('/courses');
   await page.getByRole('button', { name: 'View course' }).first().click();
   const details = page.getByRole('dialog', { name: 'Course 01' });
-  await details.getByRole('button', { name: 'Change status' }).click();
-  const moderation = page.getByRole('dialog', {
-    name: 'Change publication status',
-  });
-  const submit = moderation.getByRole('button', { name: 'Change status' });
-  await expect(submit).toBeDisabled();
-  await controls.choose('New status', 'Rejected', moderation);
-  await moderation.getByRole('button', { name: 'Change status' }).click();
   await expect(
-    page.locator('article').first().getByText('Rejected', { exact: true }),
-  ).toBeVisible();
-  expect(state.patchBodies).toEqual([{ status: 'rejected' }]);
+    details.getByRole('button', { name: 'Change status' }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('link', { name: 'Create new course' }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('link', { name: 'Manage curriculum for Course 01' }),
+  ).toHaveCount(0);
+  expect(state.patchBodies).toEqual([]);
   expect(
-    state.methods.some((method) => ['POST', 'PUT', 'DELETE'].includes(method)),
+    state.methods.some((method) =>
+      ['POST', 'PATCH', 'PUT', 'DELETE'].includes(method),
+    ),
   ).toBe(false);
-  await expect(details.getByText('Rejected', { exact: true })).toBeVisible();
 });
 
 test('scrolling appends courses, stops at the end, and search resets the list', async ({

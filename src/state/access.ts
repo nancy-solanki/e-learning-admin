@@ -86,7 +86,13 @@ export function canAccessPage(role: AppRole, page: AppPage): boolean {
 
 export function canAccessPath(role: AppRole, path: string): boolean {
   const pathname = path.split(/[?#]/, 1)[0];
-  if (pathname === '/courses/create') return role === 'instructor';
+  if (
+    pathname === '/courses/create' ||
+    /^\/courses\/[^/]+\/edit$/.test(pathname)
+  )
+    return role === 'instructor';
+  if (/^\/courses\/[^/]+\/curriculum$/.test(pathname))
+    return role === 'instructor';
   const page = pageByPath[pathname];
   return page ? canAccessPage(role, page) : false;
 }

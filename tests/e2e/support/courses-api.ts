@@ -20,7 +20,14 @@ export const courses: AdminCourse[] = Array.from({ length: 21 }, (_, i) => ({
   requirements: 'No experience required',
   total_hours: '2',
   total_articles: 4,
-  thumbnail: i === 0 ? 'thumbnail-file-id' : null,
+  thumbnail:
+    i === 0
+      ? {
+          id: 'thumbnail-file-id',
+          url: '/missing-course-thumbnail.png',
+          name: 'thumbnail.png',
+        }
+      : null,
   instructor: 'instructor-1',
   categories: ['category-1'],
   tags: [],

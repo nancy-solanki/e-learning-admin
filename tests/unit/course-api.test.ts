@@ -2,6 +2,8 @@ import { afterEach, beforeEach, expect, it } from 'vitest';
 import { AxiosHeaders, type InternalAxiosRequestConfig } from 'axios';
 import { api, authTransport, resetCsrf } from '../../src/api/axios';
 import {
+  createInstructorCourse,
+  patchInstructorCourse,
   getAdminCourse,
   listAdminCourses,
   patchAdminCourse,
@@ -109,4 +111,74 @@ it('uses UUID detail routes and sends allowlisted status moderation payloads', a
   expect(JSON.parse(calls[2].data)).toEqual({ status: 'published' });
   await patchAdminCourse('course/uuid', 'rejected', '  ');
   expect(JSON.parse(calls[3].data)).toEqual({ status: 'rejected' });
+});
+
+it('creates an instructor course as authenticated multipart and returns the direct object', async () => {
+  const payload = {
+    title: 'Python',
+    localization: '77777777-7777-4777-8777-777777777777',
+    short_description: 'Learn Python',
+    long_description: 'Introduction',
+    requirements: 'A laptop\nBasic computer skills',
+    learn_description_points: 'Variables\nFunctions',
+    thumbnail: new File(['image'], 'thumbnail.png', { type: 'image/png' }),
+    categories: ['22222222-2222-4222-8222-222222222222'],
+    tags: ['Python', 'Beginner'],
+    is_free: false,
+    price: 999,
+    status: 'draft' as const,
+  };
+  api.defaults.adapter = async (config) => {
+    expect(config.method).toBe('post');
+    expect(config.url).toBe('/api/v1/course/instructor/all/');
+    expect(config.withCredentials).toBe(true);
+    expect(config.headers.get('Content-Type')).toBe(false);
+    const body = config.data as FormData;
+    expect(body).toBeInstanceOf(FormData);
+    expect(body.get('thumbnail')).toBe(payload.thumbnail);
+    expect(body.getAll('categories')).toEqual(payload.categories);
+    expect(body.get('tags')).toBe(JSON.stringify(payload.tags));
+    expect(body.get('price')).toBe('999');
+    expect(body.get('localization')).toBe(payload.localization);
+    expect(body.get('is_free')).toBe('false');
+    expect(body.get('requirements')).toBe(payload.requirements);
+    expect(body.has('instructor')).toBe(false);
+    return response({ id: 'course-uuid', ...payload }, config, 201);
+  };
+  expect(await createInstructorCourse(payload)).toEqual({
+    id: 'course-uuid',
+    ...payload,
+  });
+});
+
+it('patches instructor courses by UUID with only the changed fields', async () => {
+  api.defaults.adapter = async (config) => {
+    expect(config.method).toBe('patch');
+    expect(config.url).toBe('/api/v1/course/instructor/all/course-uuid/');
+    expect(JSON.parse(config.data)).toEqual({ price: 1299, tags: [] });
+    return response({ id: 'course-uuid', price: 1299, tags: [] }, config);
+  };
+  expect(
+    await patchInstructorCourse('course-uuid', { price: 1299, tags: [] }),
+  ).toMatchObject({ id: 'course-uuid', price: 1299 });
+});
+
+it('uploads a replacement thumbnail and clears tags in multipart PATCH', async () => {
+  const thumbnail = new File(['replacement'], 'new.png', { type: 'image/png' });
+  api.defaults.adapter = async (config) => {
+    expect(config.method).toBe('patch');
+    expect(config.headers.get('Content-Type')).toBe(false);
+    const body = config.data as FormData;
+    expect(body.get('thumbnail')).toBe(thumbnail);
+    expect(body.get('tags')).toBe('[]');
+    expect(body.get('localization')).toBe('');
+    expect(body.has('categories')).toBe(false);
+    expect(body.has('title')).toBe(false);
+    return response({ id: 'course-uuid' }, config);
+  };
+  await patchInstructorCourse('course-uuid', {
+    thumbnail,
+    tags: [],
+    localization: null,
+  });
 });

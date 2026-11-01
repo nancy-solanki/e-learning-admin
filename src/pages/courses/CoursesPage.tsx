@@ -7,7 +7,7 @@ import {
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { BookIcon, CloseIcon } from '../../components/icons/AdminIcons';
 import { Button } from '../../components/ui/Button';
 import { StatusModerationDialog } from '../../components/ui/StatusModerationDialog';
@@ -48,12 +48,10 @@ function statusLabel(status: CourseStatus) {
 }
 function CreateCourseCard() {
   return (
-    <button
-      type="button"
-      disabled
-      title="Course creation is not available yet"
-      aria-label="Create new course (not available yet)"
-      className="flex min-h-[350px] flex-col items-center justify-center gap-4 bg-[#ededed] text-[#45617f] disabled:cursor-not-allowed"
+    <Link
+      to="/courses/create"
+      aria-label="Create new course"
+      className="flex min-h-[350px] flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-[#d9d2ef] bg-[#f3f0fb] text-[#7054d8] transition-colors hover:bg-violet-100 focus-visible:outline-2 focus-visible:outline-brand"
     >
       <svg
         aria-hidden="true"
@@ -67,7 +65,7 @@ function CreateCourseCard() {
         <path d="M16 9v14M9 16h14" />
       </svg>
       <span className="text-sm font-medium">Create New Course</span>
-    </button>
+    </Link>
   );
 }
 function CourseDialog({
@@ -113,7 +111,11 @@ function CourseDialog({
           <CloseIcon className="size-5" />
         </button>
       </div>
-      <CourseImage title={course.title} className="mb-5 rounded-xl" />
+      <CourseImage
+        src={course.thumbnail?.url}
+        title={course.title}
+        className="mb-5 rounded-xl"
+      />
       <p className="mb-5 whitespace-pre-wrap">
         {course.long_description || course.short_description}
       </p>
@@ -588,7 +590,7 @@ export default function CoursesPage() {
                 key={course.id}
                 className="flex flex-col overflow-hidden rounded-xl border border-[#e6e7ef] bg-white"
               >
-                <CourseImage title={course.title} />
+                <CourseImage src={course.thumbnail?.url} title={course.title} />
                 <div className="flex flex-1 flex-col p-5">
                   <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
                     <BookIcon className="mr-auto size-6 text-[#8062bc]" />

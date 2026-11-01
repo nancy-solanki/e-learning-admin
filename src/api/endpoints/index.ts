@@ -28,6 +28,7 @@ export const ENDPOINTS = {
   },
   COURSE: {
     ADMIN_LIST: '/api/v1/course/instructor/all/',
+    LOCALIZATIONS: '/api/v1/course/localizations/',
     LIST: '/api/v1/course/',
     DETAIL: (slug: string) => `/api/v1/course/${encodeURIComponent(slug)}/`,
     ADMIN_DETAIL: (id: string) =>

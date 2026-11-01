@@ -30,6 +30,7 @@ import CategoriesPage from './pages/categories/CategoriesPage';
 import LocalizationsPage from './pages/localizations/LocalizationsPage';
 import CouponsPage from './pages/coupons/CouponsPage';
 import CoursesPage from './pages/courses/CoursesPage';
+import CreateCoursePage from './pages/courses/CreateCoursePage';
 import CurriculumPage from './pages/curriculum/CurriculumPage';
 import BankAccountsPage from './pages/bank/BankAccountsPage';
 import WalletsPage from './pages/wallets/WalletsPage';
@@ -151,6 +152,7 @@ export default function App() {
               </Route>
               <Route element={<AccessRoute page="courses" />}>
                 <Route path="courses" element={<CoursesPage />} />
+                <Route path="courses/create" element={<CreateCoursePage />} />
               </Route>
               <Route element={<AccessRoute page="bank-accounts" />}>
                 <Route path="bank-accounts" element={<BankAccountsPage />} />

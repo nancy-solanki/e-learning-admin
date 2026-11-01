@@ -55,10 +55,11 @@ export interface AdminCourse {
   requirements: string;
   total_hours: string;
   total_articles: number;
-  thumbnail: string | null;
+  localization?: string | null;
+  thumbnail: { id: string; url: string; name: string } | null;
   instructor: string | null;
   categories: string[];
-  tags: string[];
+  tags: { id: string; name: string; slug: string }[];
   student_count: number;
 }
 export interface AdminCourseFilters {
@@ -105,4 +106,97 @@ export async function patchAdminCourse(
   }
   return (await api.patch<AdminCourse>(ENDPOINTS.COURSE.ADMIN_DETAIL(id), body))
     .data;
+}
+
+export interface CreateCoursePayload {
+  title: string;
+  short_description: string;
+  long_description: string;
+  learn_description_points: string;
+  requirements: string;
+  thumbnail: File;
+  localization?: string | null;
+  categories: string[];
+  tags?: string[];
+  is_free?: boolean;
+  price?: number;
+  status?: CourseStatus;
+  is_best_seller?: boolean;
+  total_hours?: string;
+  total_articles?: number;
+}
+
+export async function createInstructorCourse(
+  body: CreateCoursePayload,
+): Promise<AdminCourse> {
+  return (
+    await api.post<AdminCourse>(
+      ENDPOINTS.COURSE.ADMIN_LIST,
+      courseFormData(body),
+    )
+  ).data;
+}
+
+export async function patchInstructorCourse(
+  id: string,
+  body: Partial<CreateCoursePayload>,
+): Promise<AdminCourse> {
+  return (
+    await api.patch<AdminCourse>(
+      ENDPOINTS.COURSE.ADMIN_DETAIL(id),
+      body.thumbnail ? courseFormData(body) : body,
+    )
+  ).data;
+}
+
+function courseFormData(body: Partial<CreateCoursePayload>): FormData {
+  const data = new FormData();
+  for (const [key, value] of Object.entries(body)) {
+    if (value === undefined) continue;
+    if (key === 'categories')
+      (value as string[]).forEach((id) => data.append(key, id));
+    else if (key === 'tags') data.append(key, JSON.stringify(value));
+    else if (value === null) data.append(key, '');
+    else if (value instanceof File) data.append(key, value);
+    else data.append(key, String(value));
+  }
+  return data;
+}
+
+export async function listCourseLocalizations(
+  signal?: AbortSignal,
+): Promise<{ value: string; label: string }[]> {
+  const base = new URL(
+    API_ROOT || window.location.origin,
+    window.location.origin,
+  );
+  const visited = new Set<string>();
+  const options: { value: string; label: string }[] = [];
+  let next: string | null = ENDPOINTS.COURSE.LOCALIZATIONS;
+  while (next) {
+    const url: URL = new URL(next, base);
+    if (
+      url.origin !== base.origin ||
+      url.pathname !== ENDPOINTS.COURSE.LOCALIZATIONS ||
+      visited.has(url.href)
+    )
+      throw new Error('Invalid localization pagination URL.');
+    visited.add(url.href);
+    const {
+      data,
+    }: {
+      data: {
+        results: { id: string; language_name: string; country: string }[];
+        next: string | null;
+      };
+    } = await api.get(url.href, { signal });
+    options.push(
+      ...data.results.map((item) => ({
+        value: item.id,
+        label: `${item.language_name} · ${item.country}`,
+      })),
+    );
+    next = data.next;
+  }
+  return options;
 }

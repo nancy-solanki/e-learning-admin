@@ -152,40 +152,53 @@ test('admin report filters, pagination, truthful progress, modal and export', as
     expect([...url.searchParams.keys()]).toEqual(['page']);
 });
 
-for (const role of ['learner', 'instructor', 'staff']) {
-  test(`${role} cannot access report or navigation`, async ({ page }) => {
-    let reportRequests = 0;
-    await page.route('**/api/v1/**', (route) => {
-      if (route.request().url().includes('/enroll/')) reportRequests++;
+test('learners cannot access report or navigation', async ({ page }) => {
+  let reportRequests = 0;
+  await page.route('**/api/v1/**', (route) => {
+    if (route.request().url().includes('/enroll/')) reportRequests++;
+    return route.fulfill({
+      json: {
+        id: 'learner',
+        username: 'learner',
+        role: ['learner'],
+      },
+    });
+  });
+  await page.goto('/enrollments');
+  await expect(page).toHaveURL('/auth/sign-in');
+  await expect(page.getByLabel('Email')).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Enrollments', exact: true }),
+  ).toHaveCount(0);
+  expect(reportRequests).toBe(0);
+});
+
+test('instructors can access enrollments from navigation and direct URL', async ({
+  page,
+}) => {
+  let reportRequests = 0;
+  await page.route('**/api/v1/**', (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/users/me/'))
       return route.fulfill({
         json: {
-          id: role,
-          username: role,
-          role: [role],
-          is_staff: role === 'staff',
+          id: 'instructor',
+          username: 'instructor',
+          role: ['instructor'],
         },
       });
-    });
-    await page.goto('/enrollments');
-    if (role === 'staff') {
-      await expect(page).toHaveURL('/enrollments');
-      await expect(
-        page.getByRole('heading', { name: 'Access denied' }),
-      ).toBeVisible();
-    } else {
-      await expect(page).toHaveURL('/');
-      await expect(
-        page.getByRole('heading', { name: 'Welcome to your dashboard' }),
-      ).toBeVisible();
-    }
-    const menu = page.getByRole('button', { name: 'Open menu', exact: true });
-    if (await menu.isVisible()) await menu.click();
-    await expect(
-      page.getByRole('link', { name: 'Enrollments', exact: true }),
-    ).toHaveCount(0);
-    expect(reportRequests).toBe(0);
+    if (url.pathname.includes('/enroll/')) reportRequests++;
+    return route.fulfill({ json: envelope([]) });
   });
-}
+
+  await page.goto('/');
+  const menu = page.getByRole('button', { name: 'Open menu', exact: true });
+  if (await menu.isVisible()) await menu.click();
+  await expect(page.getByRole('link', { name: 'Enrollments' })).toBeVisible();
+  await page.goto('/enrollments');
+  await expect(page).toHaveURL('/enrollments');
+  await expect.poll(() => reportRequests).toBeGreaterThan(0);
+});
 
 test('403 from details removes existing reporting data', async ({ page }) => {
   await page.route('**/api/v1/**', (route) => {

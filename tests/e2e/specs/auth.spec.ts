@@ -1,6 +1,35 @@
 import { mockSignIn } from '../support/auth-api';
+import { mockCourses } from '../support/courses-api';
 import { test, expect } from '../fixtures/test';
 import { admin } from '../fixtures/users';
+import { sessionAs } from '../support/session';
+
+test('instructor sign-in returns to the requested course page', async ({
+  controls,
+  page,
+}) => {
+  let signedIn = false;
+  await page.route('**/api/v1/auth/staff/sign-in/', (route) => {
+    signedIn = true;
+    return route.fulfill({ json: {} });
+  });
+  await page.route('**/api/v1/users/me/', (route) =>
+    route.fulfill({
+      status: signedIn ? 200 : 401,
+      json: signedIn ? { ...admin, role: 'instructor' } : {},
+    }),
+  );
+  await mockCourses(page);
+
+  await page.goto('/courses');
+  await expect(page).toHaveURL('/auth/sign-in');
+  await controls.signIn(admin.email, 'password');
+
+  await expect(page).toHaveURL('/courses');
+  await expect(
+    page.getByRole('heading', { name: 'My Courses · 21' }),
+  ).toBeVisible();
+});
 
 test('sign-in success, home navigation, and failed server logout', async ({
   controls,
@@ -35,6 +64,15 @@ test('sign-in success, home navigation, and failed server logout', async ({
   expect(
     await page.evaluate(() => localStorage.getItem('learninfy.auth')),
   ).toBeNull();
+});
+
+test('learners are redirected to sign-in instead of entering the portal', async ({
+  page,
+}) => {
+  await sessionAs(page, 'learner');
+  await page.goto('/');
+  await expect(page).toHaveURL('/auth/sign-in');
+  await expect(page.getByLabel('Email')).toBeVisible();
 });
 
 test('invalid credentials and failed profile fetch leave no session', async ({

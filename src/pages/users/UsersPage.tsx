@@ -11,7 +11,8 @@ import {
   StarIcon,
   SearchIcon,
 } from '../../components/icons/AdminIcons';
-import { isAdmin } from '../../lib/permissions';
+import { isAdmin, isInstructor } from '../../lib/permissions';
+import { normalizeUserRoles } from '../../state/access';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
 import type { UserListFilters } from '../../api/services/users';
@@ -112,14 +113,20 @@ function userStatus(user: User) {
 
 function userRole(user: User) {
   if (isAdmin(user)) return 'Admins';
-  if (
-    user.role?.some(
-      (role) => role.toLowerCase().replace(/^role_/, '') === 'instructor',
-    )
+  if (isInstructor(user)) return 'Instructors';
+  return normalizeUserRoles(user).some((role) =>
+    ['student', 'learner'].includes(role),
   )
-    return 'Instructors';
-  return 'Students';
+    ? 'Students'
+    : 'Other';
 }
+
+const userRoleLabels: Record<string, string> = {
+  Admins: 'Administrator',
+  Instructors: 'Instructor',
+  Students: 'Student',
+  Other: 'Other',
+};
 
 const emptyUsers: User[] = [];
 
@@ -462,17 +469,19 @@ export default function UsersPage() {
           aria-label="Filter by role"
           className="flex flex-wrap gap-1 self-start rounded-2xl bg-[#f2f4f9] p-1"
         >
-          {['All Users', 'Admins', 'Instructors', 'Students'].map((role) => (
-            <button
-              type="button"
-              key={role}
-              aria-pressed={roleFilter === role}
-              onClick={() => setRoleFilter(role)}
-              className={`rounded-xl px-3 py-2.5 text-xs font-semibold transition ${roleFilter === role ? 'bg-white text-[#6c55ff] shadow-sm' : 'text-[#77839a] hover:text-[#6c55ff]'}`}
-            >
-              {role}
-            </button>
-          ))}
+          {['All Users', 'Admins', 'Instructors', 'Students', 'Other'].map(
+            (role) => (
+              <button
+                type="button"
+                key={role}
+                aria-pressed={roleFilter === role}
+                onClick={() => setRoleFilter(role)}
+                className={`rounded-xl px-3 py-2.5 text-xs font-semibold transition ${roleFilter === role ? 'bg-white text-[#6c55ff] shadow-sm' : 'text-[#77839a] hover:text-[#6c55ff]'}`}
+              >
+                {role}
+              </button>
+            ),
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative min-w-0 flex-1">
@@ -686,11 +695,7 @@ export default function UsersPage() {
                         </td>
                         <td className="px-5 py-4">
                           <span className="rounded-full bg-[#f1efff] px-2.5 py-1 text-xs font-semibold text-[#654ed1]">
-                            {userRole(user) === 'Admins'
-                              ? 'Administrator'
-                              : userRole(user) === 'Instructors'
-                                ? 'Instructor'
-                                : 'Student'}
+                            {userRoleLabels[userRole(user)]}
                           </span>
                         </td>
                         <td className="px-5 py-4">

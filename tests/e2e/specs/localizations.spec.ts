@@ -43,8 +43,13 @@ for (const role of ['learner', 'instructor']) {
     });
 
     await page.goto('/localizations');
-    await expect(page).toHaveURL('/');
-    await controls.openNavigation();
+    if (role === 'learner') {
+      await expect(page).toHaveURL('/auth/sign-in');
+      await expect(page.getByLabel('Email')).toBeVisible();
+    } else {
+      await expect(page).toHaveURL('/');
+      await controls.openNavigation();
+    }
     await expect(
       page.getByRole('link', { name: 'Localizations', exact: true }),
     ).toHaveCount(0);

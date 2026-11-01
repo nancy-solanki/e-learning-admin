@@ -2,7 +2,6 @@ import { Pagination } from '../../components/ui/Pagination';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Navigate } from 'react-router-dom';
 import { Input, Field } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import {
@@ -22,10 +21,9 @@ import {
   type CouponDraft,
 } from '../../api/services/coupons';
 import { listCourseOptions } from '../../api/services/courses';
-import { useCurrentUser } from '../../state/profile';
+import { useAccessState } from '../../state/access';
 import { getSessionVersion } from '../../state/session';
 import { queryClient } from '../../state/queryClient';
-import { isAdmin } from '../../lib/permissions';
 import { couponStatus, draftSchema, emptyDraft, importDraft } from './model';
 import '../categories/categories.css';
 import './coupons.css';
@@ -467,17 +465,8 @@ function CouponEditor({
 }
 
 export default function CouponsPage() {
-  const { data: user } = useCurrentUser();
-  const admin = isAdmin(user ?? null);
-  const allowed =
-    admin ||
-    !!user?.role?.some(
-      (role) =>
-        role
-          .trim()
-          .toLowerCase()
-          .replace(/^role_/, '') === 'instructor',
-    );
+  const { isAdmin: admin, canAccess } = useAccessState();
+  const allowed = canAccess('coupons');
   const [search, setSearch] = useState('');
   const query = useDebouncedValue(search.trim());
   const [type, setType] = useState('');
@@ -549,7 +538,6 @@ export default function CouponsPage() {
       setPending(false);
     }
   }
-  if (!allowed) return <Navigate to="/" replace />;
   return (
     <section className="categories-page coupons-page">
       <div className="category-page-heading">

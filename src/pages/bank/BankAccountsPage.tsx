@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Navigate } from 'react-router-dom';
 import { apiErrorMessage, apiFieldErrors } from '../../api/errors';
 import {
   createBankAccount,
@@ -23,7 +22,7 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import '../categories/categories.css';
 import './bank.css';
 import { Pagination } from '../../components/ui/Pagination';
-import { useCurrentUser } from '../../state/profile';
+import { useAccessState } from '../../state/access';
 import { queryClient } from '../../state/queryClient';
 import { getSessionVersion } from '../../state/session';
 
@@ -155,14 +154,8 @@ function AccountEditor({
 }
 
 export default function BankAccountsPage() {
-  const { data: user, isPending: profilePending } = useCurrentUser();
-  const allowed = !!user?.role?.some(
-    (role) =>
-      role
-        .trim()
-        .toLowerCase()
-        .replace(/^role_/, '') === 'instructor',
-  );
+  const { data: user, isPending: profilePending, canAccess } = useAccessState();
+  const allowed = canAccess('bank-accounts');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const query = useDebouncedValue(search.trim());
@@ -230,7 +223,6 @@ export default function BankAccountsPage() {
     }
   }
   if (profilePending) return <p role="status">Checking access…</p>;
-  if (!allowed) return <Navigate to="/" replace />;
   const data = accounts.data;
   return (
     <section className="categories-page bank-page">

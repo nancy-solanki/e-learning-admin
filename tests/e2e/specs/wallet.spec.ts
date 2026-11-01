@@ -124,24 +124,23 @@ test('wallet paginates server results and resets to page one on filter change', 
   expect(state.listQueries.at(-1)?.get('page')).toBe('1');
 });
 
-test('instructors can access their own wallet and learners are redirected', async ({
+test('instructors and learners cannot access the admin wallet', async ({
   page,
 }) => {
   await session(page, { ...admin, id: 'instructor-id', role: ['instructor'] });
   await mockWallet(page);
   await page.goto('/wallets');
-  await expect(page.getByRole('heading', { name: 'Wallet.' })).toBeVisible();
-
-  await session(page, learner);
-  await page.goto('/wallets');
   await expect(page).toHaveURL('/');
   await expect(
     page.getByRole('heading', { name: 'Welcome to your dashboard' }),
   ).toBeVisible();
+
+  await session(page, learner);
+  await page.goto('/wallets');
+  await expect(page).toHaveURL('/auth/sign-in');
+  await expect(page.getByLabel('Email')).toBeVisible();
   await expect(
-    page
-      .getByRole('navigation', { name: 'Main navigation' })
-      .getByRole('link', { name: 'Wallets' }),
+    page.getByRole('link', { name: 'Wallets', exact: true }),
   ).toHaveCount(0);
 });
 

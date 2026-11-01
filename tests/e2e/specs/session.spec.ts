@@ -2,7 +2,7 @@ import { test, expect } from '../fixtures/test';
 import { session } from '../support/session';
 import { admin, learner } from '../fixtures/users';
 
-test('non-admin direct access never requests the user list', async ({
+test('member direct access redirects to sign-in without requesting users', async ({
   page,
 }) => {
   await session(page, learner);
@@ -12,12 +12,8 @@ test('non-admin direct access never requests the user list', async ({
     return route.fulfill({ json: [] });
   });
   await page.goto('/users');
-  await expect(
-    page.getByRole('heading', { name: 'Welcome to your dashboard' }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('link', { name: 'Users', exact: true }),
-  ).toHaveCount(0);
+  await expect(page).toHaveURL('/auth/sign-in');
+  await expect(page.getByLabel('Email')).toBeVisible();
   expect(requested).toBe(false);
 });
 
@@ -102,7 +98,7 @@ test('temporary refresh outage preserves the session and supports retry', async 
 });
 
 for (const path of ['/users', '/profile']) {
-  test(`cross-tab account replacement revalidates ${path}`, async ({
+  test(`cross-tab account replacement restricts access to ${path}`, async ({
     page,
     context,
   }) => {
@@ -133,19 +129,14 @@ for (const path of ['/users', '/profile']) {
       channel.close();
     });
     if (path === '/users') {
-      await expect(page).toHaveURL(/\/$/);
-      await expect(
-        page.getByRole('heading', { name: 'Users Management' }),
-      ).toHaveCount(0);
+      await expect(page).toHaveURL('/auth/sign-in');
     } else {
-      await expect(page.getByLabel('Full name')).toHaveValue('Grace Hopper');
+      await expect(page).toHaveURL('/auth/sign-in');
     }
-    await expect(
-      page.getByRole('link', { name: 'Users', exact: true }),
-    ).toHaveCount(0);
+    await expect(page.getByLabel('Email')).toBeVisible();
     await expect(
       page.getByRole('button', { name: 'Account menu' }),
-    ).toContainText('grace');
+    ).toHaveCount(0);
     expect(replacementRequests).toBeGreaterThan(0);
     await otherTab.close();
   });

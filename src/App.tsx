@@ -17,12 +17,13 @@ import {
 } from './state/session';
 import axios from 'axios';
 import { getCurrentUser } from './state/profile';
-import { isAdmin } from './lib/permissions';
+import { getAccessibleDestination, resolveAppRole } from './state/access';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import SignInPage from './pages/auth/SignInPage';
 import HomePage from './pages/dashboard/HomePage';
 import AdminLayout from './components/layout/AdminLayout';
+import { AccessRoute } from './components/layout/AccessRoute';
 import ProfilePage from './pages/profile/ProfilePage';
 import UsersPage from './pages/users/UsersPage';
 import CategoriesPage from './pages/categories/CategoriesPage';
@@ -43,15 +44,25 @@ function useAuthSession() {
 function ProtectedRoute() {
   const session = useAuthSession();
   const location = useLocation();
-  return session ? (
-    <Outlet />
-  ) : (
-    <Navigate
-      to="/auth/sign-in"
-      state={{ from: location.pathname + location.search }}
-      replace
-    />
-  );
+  if (!session) {
+    return (
+      <Navigate
+        to="/auth/sign-in"
+        state={{ from: location.pathname + location.search }}
+        replace
+      />
+    );
+  }
+  if (resolveAppRole(session) === 'member') {
+    return (
+      <Navigate
+        to="/auth/sign-in"
+        state={{ from: location.pathname + location.search }}
+        replace
+      />
+    );
+  }
+  return <Outlet />;
 }
 function SessionGate() {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>(
@@ -109,36 +120,12 @@ function PublicRoute() {
   const session = useAuthSession();
   const location = useLocation();
   const from: unknown = location.state?.from;
-  const destination =
-    typeof from === 'string' &&
-    /^\/(?:users|profile|categories|coupons|courses|sections|lectures|wallets|bank-accounts|enrollments|localizations|ratings)(?:\?|$)/.test(
-      from,
-    )
-      ? from
-      : '/';
-  return session ? <Navigate to={destination} replace /> : <Outlet />;
-}
-function AdminRoute() {
-  const [access, setAccess] = useState<
-    'loading' | 'allowed' | 'denied' | 'error'
-  >('loading');
-  useEffect(() => {
-    let active = true;
-    getCurrentUser({ force: true })
-      .then((user) => {
-        if (active) setAccess(isAdmin(user) ? 'allowed' : 'denied');
-      })
-      .catch(() => {
-        if (active) setAccess('error');
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-  if (access === 'loading') return <p role="status">Checking access…</p>;
-  if (access === 'error')
-    return <p role="alert">Unable to verify access. Reload to try again.</p>;
-  return access === 'allowed' ? <Outlet /> : <Navigate to="/" replace />;
+  const destination = getAccessibleDestination(session, from);
+  return session && resolveAppRole(session) !== 'member' ? (
+    <Navigate to={destination} replace />
+  ) : (
+    <Outlet />
+  );
 }
 
 export default function App() {
@@ -156,25 +143,49 @@ export default function App() {
         <Route element={<SessionGate />}>
           <Route element={<ProtectedRoute />}>
             <Route element={<AdminLayout />}>
-              <Route index element={<HomePage />} />
-              <Route path="coupons" element={<CouponsPage />} />
-              <Route path="courses" element={<CoursesPage />} />
-              <Route path="bank-accounts" element={<BankAccountsPage />} />
-              <Route path="wallets" element={<WalletsPage />} />
-              <Route
-                path="sections"
-                element={<CurriculumPage key="sections" kind="sections" />}
-              />
-              <Route
-                path="lectures"
-                element={<CurriculumPage key="lectures" kind="lectures" />}
-              />
-              <Route path="profile" element={<ProfilePage />} />
-              <Route element={<AdminRoute />}>
+              <Route element={<AccessRoute page="home" />}>
+                <Route index element={<HomePage />} />
+              </Route>
+              <Route element={<AccessRoute page="coupons" />}>
+                <Route path="coupons" element={<CouponsPage />} />
+              </Route>
+              <Route element={<AccessRoute page="courses" />}>
+                <Route path="courses" element={<CoursesPage />} />
+              </Route>
+              <Route element={<AccessRoute page="bank-accounts" />}>
+                <Route path="bank-accounts" element={<BankAccountsPage />} />
+              </Route>
+              <Route element={<AccessRoute page="wallets" />}>
+                <Route path="wallets" element={<WalletsPage />} />
+              </Route>
+              <Route element={<AccessRoute page="sections" />}>
+                <Route
+                  path="sections"
+                  element={<CurriculumPage key="sections" kind="sections" />}
+                />
+              </Route>
+              <Route element={<AccessRoute page="lectures" />}>
+                <Route
+                  path="lectures"
+                  element={<CurriculumPage key="lectures" kind="lectures" />}
+                />
+              </Route>
+              <Route element={<AccessRoute page="profile" />}>
+                <Route path="profile" element={<ProfilePage />} />
+              </Route>
+              <Route element={<AccessRoute page="enrollments" />}>
                 <Route path="enrollments" element={<EnrollmentsPage />} />
+              </Route>
+              <Route element={<AccessRoute page="users" />}>
                 <Route path="users" element={<UsersPage />} />
+              </Route>
+              <Route element={<AccessRoute page="categories" />}>
                 <Route path="categories" element={<CategoriesPage />} />
+              </Route>
+              <Route element={<AccessRoute page="ratings" />}>
                 <Route path="ratings" element={<RatingsPage />} />
+              </Route>
+              <Route element={<AccessRoute page="localizations" />}>
                 <Route path="localizations" element={<LocalizationsPage />} />
               </Route>
             </Route>

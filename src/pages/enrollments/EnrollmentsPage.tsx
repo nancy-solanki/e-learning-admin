@@ -139,14 +139,9 @@ function EnrollmentDialog({
   );
 }
 export default function EnrollmentsPage() {
-  const { data: profile } = useCurrentUser();
-  if (!profile?.role?.includes('admin'))
-    return (
-      <div role="alert">
-        <h1>Access denied</h1>
-        <p>Enrollments are available to administrators only.</p>
-      </div>
-    );
+  const { data: profile, isPending } = useCurrentUser();
+  if (isPending) return <p role="status">Loading enrollments…</p>;
+  if (!profile) return <p role="alert">Unable to load your account.</p>;
   return <EnrollmentReport key={`${profile.id}:${getSessionVersion()}`} />;
 }
 function EnrollmentReport() {

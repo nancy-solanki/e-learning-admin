@@ -7,7 +7,7 @@ import {
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
-import { Navigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { BookIcon, CloseIcon } from '../../components/icons/AdminIcons';
 import { Button } from '../../components/ui/Button';
 import { StatusModerationDialog } from '../../components/ui/StatusModerationDialog';
@@ -15,9 +15,8 @@ import { Drawer } from '../../components/ui/Drawer';
 import { Select } from '../../components/ui/Select';
 import { OrderingSelect } from '../../components/ui/OrderingSelect';
 import { Field, Input } from '../../components/ui/Input';
-import { useCurrentUser } from '../../state/profile';
+import { useAccessState } from '../../state/access';
 import { apiErrorMessage } from '../../api/errors';
-import { isAdmin } from '../../lib/permissions';
 import { queryClient } from '../../state/queryClient';
 import {
   getAdminCourse,
@@ -47,16 +46,42 @@ function statusLabel(status: CourseStatus) {
     ? 'In Review'
     : status[0].toUpperCase() + status.slice(1);
 }
+function CreateCourseCard() {
+  return (
+    <button
+      type="button"
+      disabled
+      title="Course creation is not available yet"
+      aria-label="Create new course (not available yet)"
+      className="flex min-h-[350px] flex-col items-center justify-center gap-4 bg-[#ededed] text-[#45617f] disabled:cursor-not-allowed"
+    >
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 32 32"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        className="size-11"
+      >
+        <rect x="2.5" y="2.5" width="27" height="27" />
+        <path d="M16 9v14M9 16h14" />
+      </svg>
+      <span className="text-sm font-medium">Create New Course</span>
+    </button>
+  );
+}
 function CourseDialog({
   course,
   instructorName,
   categoryNames,
+  canChangeStatus,
   onChangeStatus,
   onClose,
 }: {
   course: AdminCourse;
   instructorName: string;
   categoryNames: string[];
+  canChangeStatus: boolean;
   onChangeStatus: () => void;
   onClose: () => void;
 }) {
@@ -117,7 +142,7 @@ function CourseDialog({
           </div>
         ))}
       </dl>
-      {!course.deleted_at && (
+      {canChangeStatus && !course.deleted_at && (
         <div className="mt-6 border-t border-slate-100 pt-5">
           <Button variant="primary" onClick={onChangeStatus}>
             Change status
@@ -277,8 +302,14 @@ function CourseFilters({
 }
 
 export default function CoursesPage() {
-  const { data: user, isPending: profilePending } = useCurrentUser();
-  const allowed = isAdmin(user ?? null);
+  const access = useAccessState();
+  const {
+    data: user,
+    isPending: profilePending,
+    isAdmin: admin,
+    isInstructor: instructor,
+  } = access;
+  const allowed = access.canAccess('courses');
   const [params, setParams] = useSearchParams();
   const filters: AdminCourseFilters = {};
   const status = params.get('status');
@@ -369,12 +400,12 @@ export default function CoursesPage() {
   const categoryOptions = useQuery({
     queryKey: ['course-filter-options', 'categories'],
     queryFn: ({ signal }) => listCategoryOptions(signal),
-    enabled: allowed,
+    enabled: admin,
   });
   const instructorOptions = useQuery({
     queryKey: ['course-filter-options', 'instructors'],
     queryFn: ({ signal }) => listInstructorOptions(signal),
-    enabled: allowed,
+    enabled: admin,
   });
   const updateMutation = useMutation({
     mutationFn: ({
@@ -410,7 +441,7 @@ export default function CoursesPage() {
     queryFn: ({ signal, pageParam }) =>
       listAdminCourses(
         {
-          ...filters,
+          ...(admin ? filters : { ...filters, instructor: user?.id }),
           search: search || undefined,
           ordering: ordering || undefined,
           page: pageParam,
@@ -451,14 +482,15 @@ export default function CoursesPage() {
   const courses = query.data?.pages.flatMap((page) => page.results) ?? [];
   const count = query.data?.pages[0]?.count ?? 0;
   if (profilePending) return <p role="status">Loading courses…</p>;
-  if (!allowed) return <Navigate to="/" replace />;
   return (
     <section className="text-[#202134]">
       <h1 className="mb-2 font-display text-4xl font-extrabold">
         Courses<span className="text-[#7961dc]">.</span>
       </h1>
       <p className="mb-6 text-sm text-slate-500">
-        Browse all instructors’ courses, including soft-deleted courses.
+        {admin
+          ? 'Browse all instructors’ courses, including soft-deleted courses.'
+          : 'Manage and review the courses you have created.'}
       </p>
       <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-[#e9e9f0] bg-white p-4">
         <div className="min-w-[200px] flex-1">
@@ -481,23 +513,25 @@ export default function CoursesPage() {
             }}
           />
         </div>
-        <Button
-          aria-haspopup="dialog"
-          aria-expanded={filtersOpen}
-          onClick={() => setFiltersOpen(true)}
-        >
-          Filters{' '}
-          {activeFilterCount > 0 && (
-            <span className="rounded-full bg-violet-100 px-2 text-xs text-violet-700">
-              {activeFilterCount}
-            </span>
-          )}
-        </Button>
+        {admin && (
+          <Button
+            aria-haspopup="dialog"
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen(true)}
+          >
+            Filters{' '}
+            {activeFilterCount > 0 && (
+              <span className="rounded-full bg-violet-100 px-2 text-xs text-violet-700">
+                {activeFilterCount}
+              </span>
+            )}
+          </Button>
+        )}
         {(Object.keys(filters).length > 0 || searchInput || ordering) && (
           <Button onClick={clearFilters}>Clear filters</Button>
         )}
       </div>
-      {filtersOpen && (
+      {admin && filtersOpen && (
         <CourseFilters
           key={params.toString()}
           filters={filters}
@@ -530,15 +564,25 @@ export default function CoursesPage() {
           </Button>
         </div>
       )}
+      {instructor && !query.data && (
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          <CreateCourseCard />
+        </div>
+      )}
       {query.data && search === searchInput.trim() && (
         <>
-          <h2 className="mb-4 text-lg font-bold">Course library · {count}</h2>
+          <h2 className="mb-4 text-lg font-bold">
+            {admin ? 'Course library' : 'My Courses'} · {count}
+          </h2>
           {courses.length === 0 && (
-            <p className="py-10 text-center text-slate-500">
-              No courses found. Try another search or adjust your filters.
+            <p className="mb-5 text-slate-500">
+              {instructor
+                ? 'You have not created any courses yet.'
+                : 'No courses found. Try another search or adjust your filters.'}
             </p>
           )}
           <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {instructor && <CreateCourseCard />}
             {courses.map((course) => (
               <article
                 key={course.id}
@@ -630,22 +674,25 @@ export default function CoursesPage() {
             <CourseDialog
               course={detailQuery.data}
               instructorName={
-                instructorOptions.data?.find(
-                  (option) => option.value === detailQuery.data?.instructor,
-                )?.label ?? 'Unknown instructor'
+                instructor
+                  ? user?.full_name || user?.username || 'You'
+                  : (instructorOptions.data?.find(
+                      (option) => option.value === detailQuery.data?.instructor,
+                    )?.label ?? 'Unknown instructor')
               }
               categoryNames={detailQuery.data.categories.map(
                 (id) =>
                   categoryOptions.data?.find((option) => option.value === id)
                     ?.label ?? 'Category unavailable',
               )}
+              canChangeStatus={admin}
               onChangeStatus={() => setModerating(detailQuery.data!)}
               onClose={() => setSelected(null)}
             />
           )}
         </>
       )}
-      {moderating && !moderating.deleted_at && (
+      {admin && moderating && !moderating.deleted_at && (
         <StatusModerationDialog
           currentStatus={moderating.status}
           statuses={statuses.map((value) => ({

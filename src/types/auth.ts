@@ -58,7 +58,7 @@ export interface User {
   public_profile: boolean;
   search_engine_visibility: boolean;
   share_learning_activity: boolean;
-  role: string[];
+  role: string[] | string;
   language: string;
   bio: string;
   status?: 'AC' | 'PD' | 'SA' | 'NA' | string;

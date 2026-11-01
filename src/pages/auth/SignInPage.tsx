@@ -10,6 +10,7 @@ import { FormNotice, type Notice } from '../../components/ui/FormNotice';
 import { apiErrorMessage } from '../../api/errors';
 import { setCurrentUser } from '../../state/profile';
 import { setSessionUser, clearSessionCache } from '../../state/session';
+import { getAccessibleDestination } from '../../state/access';
 import { applyServerErrors } from '../../lib/form';
 import { signInSchema, type SignInValues } from '../../lib/validation';
 
@@ -17,11 +18,6 @@ export default function SignInPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const from: unknown = location.state?.from;
-  const destination =
-    typeof from === 'string' &&
-    /^\/(?:users|profile|categories)(?:\?|$)/.test(from)
-      ? from
-      : '/';
   const [notice, setNotice] = useState<Notice | null>(null);
   const {
     register,
@@ -41,7 +37,7 @@ export default function SignInPage() {
       clearSessionCache();
       setCurrentUser(data);
       setSessionUser(data);
-      navigate(destination, { replace: true });
+      navigate(getAccessibleDestination(data, from), { replace: true });
     } catch (error) {
       applyServerErrors<SignInValues>(error, setError);
       setNotice({

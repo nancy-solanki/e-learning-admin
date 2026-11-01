@@ -17,8 +17,7 @@ import {
   useNavigate,
 } from 'react-router-dom';
 import { clearSession } from '../../state/session';
-import { useCurrentUser } from '../../state/profile';
-import { isAdmin } from '../../lib/permissions';
+import { canAccessPath, useAccessState } from '../../state/access';
 
 const pageTitles: Record<string, string> = {
   '/enrollments': 'Enrollment management',
@@ -38,8 +37,12 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const { data: profile } = useCurrentUser();
-  const user = profile ?? null;
+  const {
+    data: user,
+    isAdmin: admin,
+    isInstructor: instructor,
+    role,
+  } = useAccessState();
   const [error, setError] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
   const logout = async () => {
@@ -56,15 +59,9 @@ export default function AdminLayout() {
   };
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition ${isActive ? 'bg-[#635bce]/20 text-white' : 'text-[#bbc0d1] hover:bg-white/5 hover:text-white'}`;
-  const navigation = isAdmin(user)
-    ? adminNavigation.filter(
-        (item) => item.path !== '/enrollments' || user?.role?.includes('admin'),
-      )
-    : user?.role?.some(
-          (role) => role.toLowerCase().replace(/^role_/, '') === 'instructor',
-        )
-      ? instructorNavigation
-      : [];
+  const navigation = (admin ? adminNavigation : instructorNavigation).filter(
+    (item) => !item.path || canAccessPath(role, item.path),
+  );
   function isSubmenuActive(path: string) {
     const [pathname, search = ''] = path.split('?');
     return (
@@ -124,7 +121,7 @@ export default function AdminLayout() {
             <HomeIcon className="h-[18px] w-[18px]" />
             Home
           </NavLink>
-          {isAdmin(user) && navigation.length > 0 && (
+          {admin && navigation.length > 0 && (
             <p className="mb-2 mt-6 px-3 text-[10px] font-medium uppercase tracking-[0.14em] text-[#777e96]">
               Management
             </p>
@@ -201,13 +198,13 @@ export default function AdminLayout() {
           )}
         </nav>
         <div className="flex shrink-0 items-center gap-3 border-t border-white/5 p-4">
-          <Avatar user={user} className="h-9 w-9 text-xs" />
+          <Avatar user={user ?? null} className="h-9 w-9 text-xs" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-semibold text-white">
               {user?.username || user?.email || 'Your account'}
             </p>
             <p className="mt-1 text-[10px] text-[#9299b1]">
-              {isAdmin(user) ? 'Administrator' : 'Member'}
+              {admin ? 'Administrator' : instructor ? 'Instructor' : 'Member'}
             </p>
           </div>
         </div>
@@ -240,7 +237,7 @@ export default function AdminLayout() {
               <FullscreenIcon className="h-4 w-4" />
             </button>
             <AccountDropdown
-              user={user}
+              user={user ?? null}
               loggingOut={loggingOut}
               onLogout={() => void logout()}
             />

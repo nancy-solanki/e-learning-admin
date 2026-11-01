@@ -46,6 +46,35 @@ test('static welcome and responsive navigation', async ({
   });
 });
 
+test('only Other and Site are accordions in admin navigation', async ({
+  controls,
+  page,
+}) => {
+  await session(page);
+  await page.goto('/');
+  await controls.openNavigation();
+  const navigation = page.getByRole('navigation', { name: 'Main navigation' });
+
+  await expect(navigation.locator('details > summary')).toHaveText([
+    'Other',
+    'Site',
+  ]);
+  for (const label of [
+    'Users',
+    'Category',
+    'Courses',
+    'Sections',
+    'Lectures',
+    'Ratings',
+    'Wallets',
+    'Coupons',
+    'Enrollments',
+  ]) {
+    await expect(navigation.getByRole('link', { name: label })).toBeVisible();
+  }
+  await expect(navigation.getByText('Orders', { exact: true })).toBeVisible();
+});
+
 test('account dropdown supports keyboard navigation and SPA profile routing', async ({
   page,
 }) => {
@@ -85,4 +114,43 @@ test('account dropdown supports keyboard navigation and SPA profile routing', as
   await expect(trigger).toHaveAttribute('aria-expanded', 'false');
   await page.reload();
   await expect(page.getByLabel('Full name')).toBeVisible();
+});
+
+test('instructor navigation contains only their accessible management pages', async ({
+  page,
+  controls,
+}) => {
+  await session(page, {
+    id: 'instructor-1',
+    username: 'ada',
+    role: ['instructor'],
+  });
+  await page.goto('/');
+  await controls.openNavigation();
+
+  for (const label of [
+    'Courses',
+    'Ratings',
+    'Coupons',
+    'Enrollments',
+    'Bank Account',
+  ]) {
+    await expect(
+      page.getByRole('link', { name: label, exact: true }),
+    ).toBeVisible();
+  }
+  for (const label of [
+    'Users',
+    'Category',
+    'Sections',
+    'Lectures',
+    'Wallets',
+  ]) {
+    await expect(
+      page.getByRole('link', { name: label, exact: true }),
+    ).toHaveCount(0);
+  }
+
+  await page.goto('/sections');
+  await expect(page).toHaveURL('/');
 });

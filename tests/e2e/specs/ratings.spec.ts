@@ -2,24 +2,32 @@ import { test, expect } from '../fixtures/test';
 import { session, sessionAs } from '../support/session';
 import { mockRatings } from '../support/ratings-api';
 
-for (const role of ['anonymous', 'instructor', 'learner']) {
+for (const role of ['anonymous', 'learner']) {
   test(`${role} cannot access ratings or request management data`, async ({
     page,
-    controls,
   }) => {
     await sessionAs(page, role);
     const state = await mockRatings(page);
     await page.goto('/ratings');
-    await expect(page).toHaveURL(
-      role === 'anonymous' ? /\/auth\/sign-in/ : /\/$/,
-    );
-    await controls.openNavigation();
+    await expect(page).toHaveURL(/\/auth\/sign-in/);
+    await expect(page.getByLabel('Email')).toBeVisible();
     await expect(
       page.getByRole('link', { name: 'Ratings', exact: true }),
     ).toHaveCount(0);
     expect(state.lists).toHaveLength(0);
   });
 }
+
+test('instructors can access ratings and management data', async ({ page }) => {
+  await sessionAs(page, 'instructor');
+  const state = await mockRatings(page);
+  await page.goto('/ratings');
+  await expect(page).toHaveURL('/ratings');
+  await expect(
+    page.getByRole('heading', { name: 'Ratings', exact: true }).first(),
+  ).toBeVisible();
+  expect(state.lists.length).toBeGreaterThan(0);
+});
 
 test('ratings navigation, server pagination, search and empty results', async ({
   page,

@@ -5,37 +5,14 @@ import { mockCurriculum } from '../support/curriculum-api';
 for (const kind of ['section', 'lecture'] as const) {
   const plural = `${kind}s`;
 
-  test(`${plural}: instructors use direct navigation and live curriculum details`, async ({
+  test(`${plural}: instructors cannot access admin curriculum`, async ({
     page,
-    controls,
   }) => {
     await sessionAs(page, 'instructor');
-    const state = await mockCurriculum(page);
     await page.goto(`/${plural}`);
-    await expect(page.locator('article')).toContainText(state[kind].title);
-    await controls.openNavigation();
-    const navigation = page.getByRole('navigation', {
-      name: 'Main navigation',
-    });
-    await expect(navigation.getByRole('link')).toHaveText([
-      'Home',
-      'Courses',
-      'Coupons',
-      'Bank Accounts',
-    ]);
-    await expect(navigation.locator('details')).toHaveCount(0);
-    const closeMenu = page.getByRole('button', {
-      name: 'Close menu',
-      exact: true,
-    });
-    if (await closeMenu.isVisible()) {
-      await navigation.getByRole('link').first().focus();
-      await page.keyboard.press('Escape');
-    }
-    await expect(page.getByText('Sample data · Static preview')).toHaveCount(0);
-    await page.getByRole('button', { name: 'View details' }).click();
+    await expect(page).toHaveURL('/');
     await expect(
-      page.getByRole('dialog', { name: state[kind].title }),
+      page.getByRole('heading', { name: 'Welcome to your dashboard' }),
     ).toBeVisible();
   });
 

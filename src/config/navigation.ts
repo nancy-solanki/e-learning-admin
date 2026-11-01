@@ -39,11 +39,7 @@ export const adminNavigation: NavigationItem[] = [
   { label: 'Ratings', icon: StarIcon, path: '/ratings' },
   { label: 'Wallets', icon: WalletIcon, path: '/wallets' },
   { label: 'Coupons', icon: CouponIcon, path: '/coupons' },
-  {
-    label: 'Orders',
-    icon: OrderIcon,
-    submenu: ['All Orders', 'Paid Orders', 'Rejected Orders'],
-  },
+  { label: 'Orders', icon: OrderIcon },
   { label: 'Enrollments', icon: EnrollmentIcon, path: '/enrollments' },
   { label: 'Other', icon: GearIcon, submenu: ['All Payment Transactions'] },
   {
@@ -59,6 +55,8 @@ export const adminNavigation: NavigationItem[] = [
 
 export const instructorNavigation: NavigationItem[] = [
   { label: 'Courses', icon: BookIcon, path: '/courses' },
+  { label: 'Ratings', icon: StarIcon, path: '/ratings' },
   { label: 'Coupons', icon: CouponIcon, path: '/coupons' },
-  { label: 'Bank Accounts', icon: BankIcon, path: '/bank-accounts' },
+  { label: 'Enrollments', icon: EnrollmentIcon, path: '/enrollments' },
+  { label: 'Bank Account', icon: BankIcon, path: '/bank-accounts' },
 ];

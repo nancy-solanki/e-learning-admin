@@ -3,6 +3,7 @@ import { API_ROOT } from '../config';
 import { ENDPOINTS } from '../endpoints';
 import { listCourseOptions } from './courses';
 import { listUsers } from './users';
+import { isInstructor } from '../../lib/permissions';
 
 export type ListOption = {
   value: string;
@@ -81,15 +82,7 @@ export async function listInstructorOptions(
 ): Promise<ListOption[]> {
   const users = await listUsers({}, signal);
   return users
-    .filter((user) =>
-      user.role?.some(
-        (role) =>
-          role
-            .trim()
-            .toLowerCase()
-            .replace(/^role_/, '') === 'instructor',
-      ),
-    )
+    .filter(isInstructor)
     .map((user) => ({
       value: user.id,
       label:

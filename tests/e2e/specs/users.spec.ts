@@ -41,6 +41,30 @@ test('user search, status and ordering are sent to the backend', async ({
   await orderRequest;
 });
 
+test('unknown user roles are not mislabeled as students', async ({ page }) => {
+  const other = {
+    ...learner,
+    id: '3',
+    email: 'support@example.com',
+    username: 'support',
+    role: ['support'],
+  };
+  await session(page);
+  await page.route('**/api/v1/users/', (route) =>
+    route.fulfill({ json: [learner, other] }),
+  );
+  await page.goto('/users');
+
+  await expect(page.getByText('Student', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('table').getByText('Other', { exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Other', exact: true }).click();
+  await expect(page.getByText('Showing 1 of 2 users')).toBeVisible();
+  await expect(page.getByText('support@example.com')).toBeVisible();
+  await expect(page.getByText('grace@example.com')).toHaveCount(0);
+});
+
 test('user edit, status, privilege changes and delete persist in the table', async ({
   controls,
   page,

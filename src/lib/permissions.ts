@@ -1,16 +1,14 @@
 import type { User } from '../types/auth';
+import { canAccessPage, resolveAppRole } from '../state/access';
+
 export function isAdmin(user: User | null): boolean {
-  return Boolean(
-    user &&
-    (user.is_staff ||
-      user.is_superuser ||
-      user.role?.some((role) =>
-        ['admin', 'administrator', 'staff', 'superuser'].includes(
-          role
-            .trim()
-            .toLowerCase()
-            .replace(/^role_/, ''),
-        ),
-      )),
-  );
+  return resolveAppRole(user) === 'admin';
+}
+
+export function isInstructor(user: User | null): boolean {
+  return resolveAppRole(user) === 'instructor';
+}
+
+export function canAccessEnrollments(user: User | null): boolean {
+  return canAccessPage(resolveAppRole(user), 'enrollments');
 }

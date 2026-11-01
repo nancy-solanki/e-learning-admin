@@ -20,44 +20,34 @@ Feature: Route access and session boundaries
       | /enrollments   |
       | /localizations |
 
-  Scenario Outline: Instructor pages reject a replacement learner session at <path>
+  Scenario Outline: Instructors cannot open admin curriculum at <path>
     Given I am signed in as instructor
-    And I prepare the admin section and lecture APIs
     When I open "<path>"
-    Then the URL is "<path>"
-    And I see the heading "<heading>"
-    When the session changes to learner
-    And I reload the page
     Then the URL is "/"
     And I see the heading "Welcome to your dashboard"
 
     Examples:
-      | path      | heading   |
-      | /sections | Sections. |
-      | /lectures | Lectures. |
+      | path      |
+      | /sections |
+      | /lectures |
 
-  Scenario: An instructor can open their own wallet
+  Scenario: An instructor cannot open the admin wallet
     Given I am signed in as instructor
-    And the wallet API is available
     When I open "/wallets"
-    Then I see the heading "Wallet."
+    Then the URL is "/"
+    And I see the heading "Welcome to your dashboard"
 
   Scenario: A learner cannot open the wallet page
     Given I am signed in as learner
     When I open "/wallets"
-    Then the URL is "/"
-    And I see the heading "Welcome to your dashboard"
+    Then the URL is "/auth/sign-in"
+    And the sign-in form is available
 
-  Scenario Outline: <role> cannot access admin enrollments
-    Given I am signed in as <role>
+  Scenario: A learner cannot access enrollments
+    Given I am signed in as learner
     When I open "/enrollments"
-    Then the URL is "/"
-    And I see the heading "Welcome to your dashboard"
-
-    Examples:
-      | role       |
-      | instructor |
-      | learner    |
+    Then the URL is "/auth/sign-in"
+    And the sign-in form is available
 
   Scenario: Unknown routes show a helpful 404 with a route home
     Given I am signed in as admin
@@ -67,13 +57,14 @@ Feature: Route access and session boundaries
     Then the URL is "/"
     And I see the heading "Welcome to your dashboard"
 
-  Scenario Outline: <role> cannot access the admin course catalog
-    Given I am signed in as <role>
+  Scenario: A learner cannot access the course catalog
+    Given I am signed in as learner
     When I open "/courses"
-    Then the URL is "/"
-    And I see the heading "Welcome to your dashboard"
+    Then the URL is "/auth/sign-in"
+    And the sign-in form is available
 
-    Examples:
-      | role       |
-      | instructor |
-      | learner    |
+  Scenario: A learner cannot access the application home
+    Given I am signed in as learner
+    When I open "/"
+    Then the URL is "/auth/sign-in"
+    And the sign-in form is available

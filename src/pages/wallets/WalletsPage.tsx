@@ -2,7 +2,6 @@ import { Pagination } from '../../components/ui/Pagination';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { useMemo, useState } from 'react';
-import { Navigate } from 'react-router-dom';
 import { apiErrorMessage } from '../../api/errors';
 import {
   exportWalletTransactions,
@@ -21,8 +20,7 @@ import { Field, Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { formatMoney } from '../../lib/money';
-import { isAdmin } from '../../lib/permissions';
-import { useCurrentUser } from '../../state/profile';
+import { useAccessState } from '../../state/access';
 import './wallets.css';
 
 const transactionTypes: WalletTransactionType[] = [
@@ -198,17 +196,8 @@ function TransactionDetails({
 }
 
 export default function WalletsPage() {
-  const { data: user } = useCurrentUser();
-  const isInstructor = Boolean(
-    user?.role?.some(
-      (role) =>
-        role
-          .trim()
-          .toLowerCase()
-          .replace(/^role_/, '') === 'instructor',
-    ),
-  );
-  const allowed = isAdmin(user ?? null) || isInstructor;
+  const { data: user, canAccess } = useAccessState();
+  const allowed = canAccess('wallets');
   const [range, setRange] = useState<WalletRange>(initialRange);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search.trim());
@@ -248,8 +237,6 @@ export default function WalletsPage() {
     queryFn: ({ signal }) => listWalletTransactions(historyFilters, signal),
     enabled: allowed && validRange,
   });
-
-  if (!allowed) return <Navigate to="/" replace />;
 
   function changeRange(key: keyof WalletRange, value: string) {
     setRange((current) => ({ ...current, [key]: value }));

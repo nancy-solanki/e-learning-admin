@@ -61,7 +61,7 @@ device, never once in each suite.
 | Ratings management                     | —                       | `ratings.spec.ts`                      |
 | Sections and lecture status URLs       | `curriculum.feature`    | `curriculum.spec.ts`                   |
 | Wallet transactions and CSV exports    | `records.feature`       | —                                      |
-| Bank accounts                         | —                       | `bank.spec.ts`                        |
+| Bank accounts                          | —                       | `bank.spec.ts`                         |
 | Enrollment report                      | —                       | `enrollments.spec.ts`                  |
 
 The four preview pages use sample data, including temporary drafts and edits.

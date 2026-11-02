@@ -111,3 +111,40 @@ it('normalizes arrays, nested detail and wrapped authentication errors', () => {
     apiFieldErrors(error({ errors: { account_number: ['Already exists'] } })),
   ).toEqual({ account_number: 'Already exists' });
 });
+
+it('cancels an aborted list without dispatching a request', async () => {
+  const controller = new AbortController();
+  controller.abort();
+  const transport = vi.fn();
+  api.defaults.adapter = transport;
+  await expect(
+    listBankAccounts({ page: 1 }, controller.signal),
+  ).rejects.toMatchObject({ code: 'ERR_CANCELED' });
+  expect(transport).not.toHaveBeenCalled();
+});
+
+it.each([
+  [
+    'create',
+    () =>
+      createBankAccount({
+        name: 'Bank',
+        ifsc_code: 'IFSC',
+        account_number: '001',
+      }),
+  ],
+  ['edit', () => updateBankAccount('uuid', { name: 'Updated' })],
+  ['set default', () => setDefaultBankAccount('uuid')],
+  ['delete', () => deleteBankAccount('uuid')],
+] as const)(
+  'propagates failed %s operations without silently retrying',
+  async (_name, operation) => {
+    const failure = new Error('Bank service unavailable');
+    const transport = vi.fn(async () => {
+      throw failure;
+    });
+    api.defaults.adapter = transport;
+    await expect(operation()).rejects.toBe(failure);
+    expect(transport).toHaveBeenCalledOnce();
+  },
+);

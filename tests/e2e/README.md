@@ -61,6 +61,7 @@ device, never once in each suite.
 | Ratings management                     | —                       | `ratings.spec.ts`                      |
 | Sections and lecture status URLs       | `curriculum.feature`    | `curriculum.spec.ts`                   |
 | Wallet transactions and CSV exports    | `records.feature`       | —                                      |
+| Bank accounts                         | —                       | `bank.spec.ts`                        |
 | Enrollment report                      | —                       | `enrollments.spec.ts`                  |
 
 The four preview pages use sample data, including temporary drafts and edits.
@@ -104,3 +105,8 @@ last-page recovery, pending mutation locks, keyboard focus, and option retries.
 Curriculum regressions cover section and lecture list/detail recovery, failed
 moderation with draft retention and retry, deleted records, pagination, search
 and empty results, filter request payloads, cancelled drafts, and clearing filters.
+
+Bank account regressions cover first-account creation, trimming and leading zeros,
+masked numbers, unchanged edits, field-error draft retention and retry, default
+account deletion protection, switching defaults, cancelled and failed deletion,
+list recovery, filter/search/sort parameters, reset, and unauthorized access.

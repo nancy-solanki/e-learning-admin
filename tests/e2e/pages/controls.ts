@@ -17,6 +17,8 @@ export class Controls {
   }
 
   async openNavigation() {
+    // Wait for the authenticated layout before checking responsive visibility.
+    await expect(this.page.locator('#admin-navigation')).toBeAttached();
     const menu = this.page.locator('button[aria-controls="admin-navigation"]');
     if (
       (await menu.isVisible()) &&
@@ -27,7 +29,7 @@ export class Controls {
     const navigation = this.page.getByRole('navigation', {
       name: 'Main navigation',
     });
-    if (await navigation.count()) await expect(navigation).toBeVisible();
+    await expect(navigation).toBeVisible();
   }
 
   async signIn(email: string, password: string) {

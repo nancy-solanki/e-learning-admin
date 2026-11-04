@@ -29,20 +29,24 @@ Then(
     await expect(
       drawer.getByRole('button', { name: 'Filter by course' }),
     ).toBeVisible();
-    await expect(
-      drawer.getByRole('button', { name: 'Instructors' }),
-    ).toBeVisible();
+    const instructorFilter = drawer.getByRole('button', {
+      name: 'Instructors',
+    });
+    if (kind === 'lecture') await expect(instructorFilter).toBeVisible();
+    else await expect(instructorFilter).toHaveCount(0);
     await expect(
       drawer.getByLabel('curriculum-filter-course-slug'),
     ).toHaveCount(0);
     await expect(
       drawer.getByLabel('curriculum-filter-section-slug'),
     ).toHaveCount(0);
-    await drawer.getByRole('button', { name: 'Instructors' }).click();
-    await expect(
-      page.getByRole('option', { name: 'Ada Instructor ada@example.test' }),
-    ).toBeVisible();
-    await page.keyboard.press('Escape');
+    if (kind === 'lecture') {
+      await drawer.getByRole('button', { name: 'Instructors' }).click();
+      await expect(
+        page.getByRole('option', { name: 'Ada Instructor ada@example.test' }),
+      ).toBeVisible();
+      await page.keyboard.press('Escape');
+    }
     await drawer.getByRole('button', { name: 'Close drawer' }).click();
   },
 );

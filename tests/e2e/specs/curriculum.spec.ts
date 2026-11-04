@@ -182,11 +182,17 @@ for (const kind of ['section', 'lecture'] as const) {
       drawer.getByRole('button', { name: 'Filter by course' }),
     ).toContainText('All courses');
     await controls.choose('Filter by course', 'Python Basics', drawer);
-    await controls.choose(
-      'Instructors',
-      'Ada Instructor ada@example.test',
-      drawer,
-    );
+    if (kind === 'lecture') {
+      await controls.choose(
+        'Instructors',
+        'Ada Instructor ada@example.test',
+        drawer,
+      );
+    } else {
+      await expect(
+        drawer.getByRole('button', { name: 'Instructors' }),
+      ).toHaveCount(0);
+    }
     await controls.choose('Ordering', 'Title: Z–A', drawer);
     if (kind === 'lecture') {
       await controls.choose('Filter by section', 'Introduction', drawer);
@@ -202,10 +208,14 @@ for (const kind of ['section', 'lecture'] as const) {
     ).toEqual({
       page: '1',
       course: 'course-1',
-      instructor: 'instructor-1',
       ordering: '-title',
       ...(kind === 'lecture'
-        ? { section: 'section-1', lecture_type: 'video', is_preview: 'false' }
+        ? {
+            instructor: 'instructor-1',
+            section: 'section-1',
+            lecture_type: 'video',
+            is_preview: 'false',
+          }
         : {}),
     });
     await page

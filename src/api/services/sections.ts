@@ -23,7 +23,6 @@ export interface AdminSectionFilters {
   search?: string;
   course?: string;
   course_slug?: string;
-  instructor?: string;
   status?: SectionStatus;
   ordering?: string;
 }
@@ -53,11 +52,40 @@ export async function getAdminSection(id: string): Promise<AdminSection> {
 
 export async function patchAdminSection(
   id: string,
-  status: SectionStatus,
+  changes: Partial<SectionPayload> | SectionStatus,
 ): Promise<AdminSection> {
   return (
     await api.patch<AdminSection>(ENDPOINTS.SECTION.ADMIN_DETAIL(id), {
-      status,
+      ...(typeof changes === 'string' ? { status: changes } : changes),
     })
   ).data;
+}
+
+export interface SectionPayload {
+  title: string;
+  description: string;
+  course: string;
+  order?: number;
+  status?: SectionStatus;
+  slug?: string;
+}
+
+export async function createAdminSection(
+  payload: SectionPayload,
+): Promise<AdminSection> {
+  return (await api.post<AdminSection>(ENDPOINTS.SECTION.ADMIN_LIST, payload))
+    .data;
+}
+
+export async function updateAdminSection(
+  id: string,
+  payload: SectionPayload,
+): Promise<AdminSection> {
+  return (
+    await api.put<AdminSection>(ENDPOINTS.SECTION.ADMIN_DETAIL(id), payload)
+  ).data;
+}
+
+export async function deleteAdminSection(id: string): Promise<void> {
+  await api.delete(ENDPOINTS.SECTION.ADMIN_DETAIL(id));
 }

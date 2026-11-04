@@ -55,6 +55,7 @@ test('only Other and Site are accordions in admin navigation', async ({
   await controls.openNavigation();
   const navigation = page.getByRole('navigation', { name: 'Main navigation' });
 
+  await expect(navigation.getByRole('link', { name: 'Users' })).toBeVisible();
   await expect(navigation.locator('details > summary')).toHaveText([
     'Other',
     'Site',
@@ -127,6 +128,9 @@ test('instructor navigation contains only their accessible management pages', as
   });
   await page.goto('/');
   await controls.openNavigation();
+  await expect(
+    page.getByRole('link', { name: 'Bank Account', exact: true }),
+  ).toBeVisible();
 
   for (const label of [
     'Courses',

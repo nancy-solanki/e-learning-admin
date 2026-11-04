@@ -36,10 +36,8 @@ test('instructors see the create tile beside their own courses', async ({
     page.getByRole('heading', { name: 'My Courses · 21' }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', {
-      name: 'Create new course (not available yet)',
-    }),
-  ).toBeDisabled();
+    page.getByRole('link', { name: 'Create new course', exact: true }),
+  ).toHaveAttribute('href', '/courses/create');
   await expect(page.getByRole('heading', { name: 'Course 01' })).toBeVisible();
   expect(state.requests[0]?.get('instructor')).toBe('instructor-1');
   await expect(page.getByRole('button', { name: /^Filters/ })).toHaveCount(0);

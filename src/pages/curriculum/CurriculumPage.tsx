@@ -123,17 +123,19 @@ function CurriculumFiltersDrawer({
             ]}
           />
         </Field>
-        <Field label="Instructor" htmlFor="curriculum-filter-instructor">
-          <AsyncSelect
-            id="curriculum-filter-instructor"
-            label="Instructors"
-            allLabel="All instructors"
-            value={draft.instructor ?? ''}
-            onChange={(value) => update('instructor', value)}
-            queryKey={['course-filter-options', 'instructors']}
-            loadOptions={listInstructorOptions}
-          />
-        </Field>
+        {lecture && (
+          <Field label="Instructor" htmlFor="curriculum-filter-instructor">
+            <AsyncSelect
+              id="curriculum-filter-instructor"
+              label="Instructors"
+              allLabel="All instructors"
+              value={draft.instructor ?? ''}
+              onChange={(value) => update('instructor', value)}
+              queryKey={['course-filter-options', 'instructors']}
+              loadOptions={listInstructorOptions}
+            />
+          </Field>
+        )}
         <OrderingSelect
           id="curriculum-filter-ordering"
           value={draft.ordering ?? ''}
@@ -407,7 +409,6 @@ export default function CurriculumPage({
 
   const sectionFilters: AdminSectionFilters = {
     ...(course ? { course } : {}),
-    ...(instructor ? { instructor } : {}),
     ...(status ? { status: status as SectionStatus } : {}),
     ...(ordering ? { ordering } : {}),
   };
@@ -503,7 +504,7 @@ export default function CurriculumPage({
     page === 'last' ? Math.max(1, Math.ceil((result?.count ?? 0) / 20)) : page;
   const activeFilters = [
     course,
-    instructor,
+    ...(lecture ? [instructor] : []),
     ordering,
     ...(lecture ? [sectionId, lectureType, isPreview] : []),
   ].some(Boolean);
@@ -713,7 +714,7 @@ export default function CurriculumPage({
                       Instructor:{' '}
                       {instructorOptions.data?.find(
                         (option) => option.username === record.instructor,
-                      )?.label ?? 'Instructor unavailable'}
+                      )?.label ?? record.instructor}
                       {' · '}
                       {isLecture
                         ? record.lecture_type

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAccessState } from '../../state/access';
@@ -9,180 +9,225 @@ import {
 } from '../../api/services/lectures';
 import {
   listAdminSections,
+  createAdminSection,
+  patchAdminSection,
   type AdminSection,
 } from '../../api/services/sections';
-import { api } from '../../api/axios';
-import { ENDPOINTS } from '../../api/endpoints';
+import {
+  lectureWritesEnabled,
+  saveCurriculumOrder,
+  saveInstructorLecture,
+  deleteInstructorLecture,
+} from '../../api/services/instructorCurriculum';
 import { apiErrorMessage } from '../../api/errors';
 import { Button } from '../../components/ui/Button';
-import { Field, Input, Textarea } from '../../components/ui/Input';
-import { Select } from '../../components/ui/Select';
+import {
+  TrashIcon,
+  LectureIcon,
+  BookIcon,
+  GearIcon,
+} from '../../components/icons/AdminIcons';
+import { CurriculumDialog } from '../../components/curriculum/CurriculumDialog';
+import { SortableCards } from '../../components/curriculum/SortableCards';
+import {
+  SectionForm,
+  LectureForm,
+} from '../../components/curriculum/CurriculumForms';
+
+function arrange<T extends { id: string; order: number }>(
+  records: T[],
+  ids: string[] | null,
+): T[] {
+  if (!ids) return [...records].sort((a, b) => a.order - b.order);
+  const positions = new Map(ids.map((id, index) => [id, index]));
+  return [...records].sort(
+    (a, b) =>
+      (positions.get(a.id) ?? Infinity) - (positions.get(b.id) ?? Infinity),
+  );
+}
 
 export default function InstructorCurriculumPage() {
   const { courseId = '' } = useParams();
+  return <Curriculum key={courseId} courseId={courseId} />;
+}
+
+function Curriculum({ courseId }: { courseId: string }) {
   const access = useAccessState();
   const client = useQueryClient();
-  const [section, setSection] = useState('');
-  const [type, setType] = useState('video');
-  const [notice, setNotice] = useState('');
-  const [editingSection, setEditingSection] = useState<string | null>(null);
-  const [editingLecture, setEditingLecture] = useState<AdminLecture | null>(
+  const [sectionIds, setSectionIds] = useState<string[] | null>(null);
+  const [lectureIds, setLectureIds] = useState<string[] | null>(null);
+  const [sectionEditor, setSectionEditor] = useState<
+    AdminSection | 'new' | null
+  >(null);
+  const [managedSection, setManagedSection] = useState<AdminSection | null>(
     null,
   );
-  const [lectureEditType, setLectureEditType] = useState('video');
+  const [lectureEditor, setLectureEditor] = useState<
+    AdminLecture | 'new' | null
+  >(null);
+  const [deleteLecture, setDeleteLecture] = useState<AdminLecture | null>(null);
+  const [notice, setNotice] = useState('');
+  const sectionKey = ['course-curriculum-sections', courseId];
+  const lectureKey = ['course-curriculum-lectures', courseId];
   const course = useQuery({
     queryKey: ['curriculum-course', courseId],
     queryFn: () => getAdminCourse(courseId),
     enabled: access.isInstructor,
   });
   const sections = useQuery({
-    queryKey: ['course-curriculum-sections', courseId],
+    queryKey: sectionKey,
     enabled: access.isInstructor && course.isSuccess,
     queryFn: async ({ signal }) => {
       const records: AdminSection[] = [];
-      let page = 1;
-      while (true) {
+      for (let page = 1; ; page++) {
         const result = await listAdminSections(
-          { course: courseId, page },
+          { course: courseId, page, ordering: 'order' },
           signal,
         );
         records.push(...result.results);
         if (!result.next) return records;
-        page += 1;
       }
     },
   });
   const lectures = useQuery({
-    queryKey: ['course-curriculum-lectures', courseId],
-    enabled: access.isInstructor && course.isSuccess,
+    queryKey: lectureKey,
+    enabled: access.isInstructor && !!managedSection,
     queryFn: async ({ signal }) => {
       const records: AdminLecture[] = [];
-      let page = 1;
-      while (true) {
+      for (let page = 1; ; page++) {
         const result = await listAdminLectures(
-          { course: courseId, page },
+          { course: courseId, page, ordering: 'order' },
           signal,
         );
         records.push(...result.results);
         if (!result.next) return records;
-        page += 1;
       }
     },
   });
-  const addSection = useMutation({
-    mutationFn: async (form: HTMLFormElement) => {
-      const data = new FormData(form);
-      return (
-        await api.post<AdminSection>(ENDPOINTS.SECTION.ADMIN_LIST, {
-          title: String(data.get('title')).trim(),
-          description: String(data.get('description')).trim(),
-          course: courseId,
-          status: 'draft',
-        })
-      ).data;
-    },
-    onSuccess: async (created, form) => {
-      form.reset();
-      setSection(created.id);
-      setNotice('Section created. You can now add a lecture.');
-      await Promise.all([
-        client.invalidateQueries({
-          queryKey: ['course-curriculum-sections', courseId],
-        }),
-        client.invalidateQueries({
-          queryKey: ['admin-content-list', 'sections'],
-        }),
-      ]);
-    },
-  });
-  const updateSection = useMutation({
-    mutationFn: async ({ id, form }: { id: string; form: HTMLFormElement }) => {
-      const data = new FormData(form);
-      return (
-        await api.patch<AdminSection>(ENDPOINTS.SECTION.ADMIN_DETAIL(id), {
-          title: String(data.get('title')).trim(),
-          description: String(data.get('description')).trim(),
-        })
-      ).data;
+  const sectionRows = arrange(
+    (sections.data ?? []).filter((item) => !item.deleted_at),
+    sectionIds,
+  );
+  const lectureRows = arrange(
+    (lectures.data ?? []).filter(
+      (item) => !item.deleted_at && item.section === managedSection?.id,
+    ),
+    lectureIds,
+  );
+  const dirty = !!sectionIds || !!lectureIds;
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
+  async function refresh(kind: 'sections' | 'lectures') {
+    await Promise.all([
+      client.invalidateQueries({
+        queryKey: kind === 'sections' ? sectionKey : lectureKey,
+      }),
+      client.invalidateQueries({ queryKey: ['admin-content-list', kind] }),
+      client.invalidateQueries({ queryKey: ['admin-content-detail', kind] }),
+    ]);
+  }
+  const sectionSave = useMutation({
+    mutationFn: async (data: { title: string; description: string }) => {
+      if (sectionEditor && sectionEditor !== 'new') {
+        const changes = Object.fromEntries(
+          Object.entries(data).filter(
+            ([key, value]) =>
+              sectionEditor[key as 'title' | 'description'] !== value,
+          ),
+        );
+        if (!Object.keys(changes).length) return sectionEditor;
+        return patchAdminSection(sectionEditor.id, changes);
+      }
+      return createAdminSection({
+        ...data,
+        course: courseId,
+        status: 'draft',
+        order: Math.max(0, ...sectionRows.map((item) => item.order)) + 1,
+      });
     },
     onSuccess: async () => {
-      setEditingSection(null);
-      setNotice('Section updated.');
-      await client.invalidateQueries({
-        queryKey: ['course-curriculum-sections', courseId],
-      });
-      await client.invalidateQueries({
-        queryKey: ['admin-content-list', 'sections'],
-      });
+      await refresh('sections');
+      setSectionEditor(null);
+      setNotice('Section saved.');
     },
   });
-  const addLecture = useMutation({
-    mutationFn: async (form: HTMLFormElement) => {
-      const data = new FormData(form);
-      data.set('course', courseId);
-      data.set('section', section);
-      data.set('lecture_type', type);
-      data.set('status', 'draft');
-      data.set('is_preview', data.has('is_preview') ? 'true' : 'false');
-      await api.post(ENDPOINTS.LECTURE.ADMIN_LIST, data);
-    },
-    onSuccess: async (_, form) => {
-      form.reset();
-      setNotice(
-        'Lecture created successfully. Add another lecture to keep building your course.',
+  const orderSave = useMutation({
+    mutationFn: async (kind: 'sections' | 'lectures') => {
+      // Individual PATCH requests are retryable; retain the desired order if any request fails.
+      const rows = kind === 'sections' ? sectionRows : lectureRows;
+      await saveCurriculumOrder(
+        kind,
+        rows.map((item) => item.id),
       );
-      await Promise.all([
-        client.invalidateQueries({
-          queryKey: ['course-curriculum-lectures', courseId],
-        }),
-        client.invalidateQueries({
-          queryKey: ['admin-content-list', 'lectures'],
-        }),
-        client.invalidateQueries({ queryKey: ['admin-courses'] }),
-      ]);
+      return kind;
+    },
+    onSuccess: async (kind) => {
+      await refresh(kind);
+      if (kind === 'sections') setSectionIds(null);
+      else setLectureIds(null);
+      setNotice(`${kind === 'sections' ? 'Section' : 'Lecture'} order saved.`);
     },
   });
-  const updateLecture = useMutation({
-    mutationFn: async ({
-      id,
-      form,
-      current,
-    }: {
-      id: string;
-      form: HTMLFormElement;
-      current: AdminLecture;
-    }) => {
-      const data = new FormData(form);
+  const lectureSave = useMutation({
+    mutationFn: async (data: FormData) => {
+      if (!managedSection) throw new Error('No section selected');
       data.set('course', courseId);
-      data.set('section', String(data.get('section')));
-      data.set('lecture_type', String(data.get('lecture_type')));
-      data.set('is_preview', data.has('is_preview') ? 'true' : 'false');
-      data.set('status', current.status);
-      const source = data.get('source');
-      if (source instanceof File && !source.name) data.delete('source');
-      if (!String(data.get('document_content') ?? '').trim())
-        data.delete('document_content');
-      return (
-        await api.patch<AdminLecture>(ENDPOINTS.LECTURE.ADMIN_DETAIL(id), data)
-      ).data;
+      data.set('section', managedSection.id);
+      if (lectureEditor && lectureEditor !== 'new') {
+        if (!String(data.get('document_content') ?? '').trim())
+          data.delete('document_content');
+        return saveInstructorLecture(data, lectureEditor.id);
+      }
+      data.set(
+        'order',
+        String(Math.max(0, ...lectureRows.map((item) => item.order)) + 1),
+      );
+      return saveInstructorLecture(data);
     },
     onSuccess: async () => {
-      setEditingLecture(null);
-      setNotice('Lecture updated.');
-      await client.invalidateQueries({
-        queryKey: ['course-curriculum-lectures', courseId],
-      });
-      await Promise.all([
-        client.invalidateQueries({
-          queryKey: ['admin-content-list', 'lectures'],
-        }),
-        client.invalidateQueries({ queryKey: ['admin-courses'] }),
-      ]);
+      await refresh('lectures');
+      setLectureEditor(null);
+      setNotice('Lecture saved.');
     },
   });
+  const lectureDelete = useMutation({
+    mutationFn: (id: string) => deleteInstructorLecture(id),
+    onSuccess: async () => {
+      await refresh('lectures');
+      setDeleteLecture(null);
+      setNotice('Lecture deleted.');
+    },
+  });
+  const busy =
+    sectionSave.isPending ||
+    orderSave.isPending ||
+    lectureSave.isPending ||
+    lectureDelete.isPending;
+  const errorMessage = (error: unknown) =>
+    apiErrorMessage(error, 'Unable to save. Please try again.', {
+      includeFieldErrors: true,
+    });
+  function closeLectures() {
+    if (
+      busy ||
+      (lectureIds && !window.confirm('Discard the unsaved lecture order?'))
+    )
+      return;
+    setLectureIds(null);
+    setManagedSection(null);
+    orderSave.reset();
+  }
   if (access.isPending || (access.isInstructor && course.isPending))
     return <p role="status">Loading curriculum…</p>;
-  if (!access.isInstructor) return <Navigate to="/courses" replace />;
+  if (!access.isInstructor || course.data?.deleted_at)
+    return <Navigate to="/courses" replace />;
   if (course.isError)
     return (
       <div role="alert">
@@ -190,496 +235,363 @@ export default function InstructorCurriculumPage() {
         <Button onClick={() => void course.refetch()}>Retry</Button>
       </div>
     );
-  if (course.data?.deleted_at) return <Navigate to="/courses" replace />;
-  const pending =
-    addLecture.isPending ||
-    addSection.isPending ||
-    updateSection.isPending ||
-    updateLecture.isPending;
-  const activeSections =
-    sections.data?.filter((item) => !item.deleted_at) ?? [];
-  function submitSection(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!pending) {
-      setNotice('');
-      addSection.mutate(event.currentTarget);
-    }
-  }
-  function submitLecture(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!pending && section) {
-      setNotice('');
-      addLecture.mutate(event.currentTarget);
-    }
-  }
-  function submitSectionEdit(event: FormEvent<HTMLFormElement>, id: string) {
-    event.preventDefault();
-    if (!pending) updateSection.mutate({ id, form: event.currentTarget });
-  }
-  function submitLectureEdit(
-    event: FormEvent<HTMLFormElement>,
-    current: AdminLecture,
-  ) {
-    event.preventDefault();
-    if (!pending)
-      updateLecture.mutate({
-        id: current.id,
-        form: event.currentTarget,
-        current,
-      });
-  }
   return (
-    <section className="mx-auto max-w-4xl">
-      <Link to="/courses" className="text-sm text-brand">
+    <section className="mx-auto max-w-6xl pb-12">
+      <Link
+        to="/courses"
+        onClick={(event) => {
+          if (dirty && !window.confirm('Discard unsaved curriculum order?'))
+            event.preventDefault();
+        }}
+        className="text-sm font-medium text-violet-700"
+      >
         ← Back to courses
       </Link>
-      <h1 className="mt-5 font-display text-3xl font-extrabold">
-        Manage curriculum<span className="text-brand">.</span>
-      </h1>
-      <p className="mb-8 mt-2 text-slate-500">{course.data?.title}</p>
+      <header className="my-7 flex flex-wrap items-end justify-between gap-5">
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-violet-600">
+            Course curriculum
+          </p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+            {course.data?.title}
+          </h1>
+          <p className="mt-2 text-sm text-slate-500">
+            Organize your sections and lectures in the order learners will see
+            them.
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <Button
+            variant="primary"
+            onClick={() => {
+              setNotice('');
+              orderSave.mutate('sections');
+            }}
+            disabled={!sectionIds || busy}
+          >
+            {orderSave.isPending && orderSave.variables === 'sections'
+              ? 'Saving…'
+              : 'Save'}
+          </Button>
+          <Button
+            variant="primary"
+            disabled={busy || !!sectionIds || !sections.isSuccess}
+            onClick={() => {
+              sectionSave.reset();
+              setSectionEditor('new');
+            }}
+          >
+            + New section
+          </Button>
+        </div>
+      </header>
       {notice && (
         <p
           role="status"
-          className="mb-5 rounded-xl bg-green-50 p-4 text-sm text-green-800"
+          className="mb-5 rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
         >
           {notice}
         </p>
       )}
-      <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-6">
-        <h2 className="mb-4 text-lg font-bold">
-          Existing sections and lectures
-        </h2>
-        {sections.isPending || lectures.isPending ? (
-          <p role="status">Loading existing curriculum…</p>
-        ) : sections.isError || lectures.isError ? (
-          <div role="alert" className="grid gap-3 text-sm text-red-700">
-            <p>
-              Could not load the existing curriculum.{' '}
-              {apiErrorMessage(
-                sections.error ?? lectures.error,
-                'Please try again.',
-              )}
-            </p>
-            <Button
-              onClick={() => {
-                void sections.refetch();
-                void lectures.refetch();
-              }}
-            >
-              Retry
-            </Button>
-          </div>
-        ) : sections.data?.length ? (
-          <div className="grid gap-4">
-            {sections.data.map((item) => {
-              const sectionLectures =
-                lectures.data?.filter(
-                  (lecture) => lecture.section === item.id,
-                ) ?? [];
-              return (
-                <article
-                  key={item.id}
-                  className="rounded-xl border border-slate-200 p-4"
-                >
-                  {editingSection === item.id ? (
-                    <form
-                      onSubmit={(event) => submitSectionEdit(event, item.id)}
-                      className="grid gap-3"
-                    >
-                      <Field
-                        label="Section title"
-                        htmlFor={`edit-section-title-${item.id}`}
-                        required
-                      >
-                        <Input
-                          id={`edit-section-title-${item.id}`}
-                          name="title"
-                          defaultValue={item.title}
-                          required
-                          maxLength={250}
-                        />
-                      </Field>
-                      <Field
-                        label="Description"
-                        htmlFor={`edit-section-description-${item.id}`}
-                        required
-                      >
-                        <Textarea
-                          id={`edit-section-description-${item.id}`}
-                          name="description"
-                          defaultValue={item.description}
-                          required
-                        />
-                      </Field>
-                      {updateSection.isError && (
-                        <p role="alert" className="text-sm text-red-600">
-                          {apiErrorMessage(
-                            updateSection.error,
-                            'Could not update section.',
-                            { includeFieldErrors: true },
-                          )}
-                        </p>
-                      )}
-                      <div className="flex gap-2">
-                        <Button
-                          variant="primary"
-                          type="submit"
-                          disabled={pending}
-                        >
-                          Save section
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            setEditingSection(null);
-                            updateSection.reset();
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </form>
-                  ) : (
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <h3 className="font-semibold">{item.title}</h3>
-                        <p className="mt-1 whitespace-pre-wrap text-sm text-slate-500">
-                          {item.description}
-                        </p>
-                        {item.deleted_at && (
-                          <p className="mt-2 text-xs text-red-700">
-                            Deleted · read-only
-                          </p>
-                        )}
-                      </div>
-                      {!item.deleted_at && (
-                        <Button
-                          onClick={() => {
-                            setEditingSection(item.id);
-                            updateSection.reset();
-                          }}
-                        >
-                          Edit section
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                  {sectionLectures.length > 0 && (
-                    <ul className="mt-4 grid gap-2 border-t border-slate-100 pt-4">
-                      {sectionLectures.map((lecture) => (
-                        <li
-                          key={lecture.id}
-                          className="flex flex-wrap items-center justify-between gap-3 text-sm"
-                        >
-                          <span>
-                            {lecture.title}
-                            {lecture.deleted_at && (
-                              <span className="ml-2 text-xs text-red-700">
-                                Deleted · read-only
-                              </span>
-                            )}
-                          </span>
-                          {!lecture.deleted_at && (
-                            <Button
-                              onClick={() => {
-                                setEditingLecture(lecture);
-                                setLectureEditType(lecture.lecture_type);
-                                updateLecture.reset();
-                              }}
-                            >
-                              Edit lecture
-                            </Button>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-sm text-slate-500">
-            No sections have been created.
-          </p>
-        )}
-      </section>
-      {editingLecture && (
-        <form
-          key={editingLecture.id}
-          onSubmit={(event) => submitLectureEdit(event, editingLecture)}
-          className="mb-6 grid gap-4 rounded-2xl border border-slate-200 bg-white p-6"
-        >
-          <h2 className="text-lg font-bold">Edit lecture</h2>
-          <Field label="Section" htmlFor="edit-lecture-section" required>
-            <Select
-              id="edit-lecture-section"
-              label="Section"
-              value={editingLecture.section}
-              onChange={(value) =>
-                setEditingLecture({ ...editingLecture, section: value })
-              }
-              options={(sections.data ?? []).map((item) => ({
-                value: item.id,
-                label: item.title,
-              }))}
-            />
-            <input
-              type="hidden"
-              name="section"
-              value={editingLecture.section}
-              readOnly
-            />
-          </Field>
-          <Field label="Lecture title" htmlFor="edit-lecture-title" required>
-            <Input
-              id="edit-lecture-title"
-              name="title"
-              defaultValue={editingLecture.title}
-              required
-              maxLength={250}
-            />
-          </Field>
-          <Field
-            label="Description"
-            htmlFor="edit-lecture-description"
-            required
-          >
-            <Textarea
-              id="edit-lecture-description"
-              name="description"
-              defaultValue={editingLecture.description}
-              required
-            />
-          </Field>
-          <input
-            type="hidden"
-            name="lecture_type"
-            value={lectureEditType}
-            readOnly
-          />
-          <Field label="Order" htmlFor="edit-lecture-order">
-            <Input
-              id="edit-lecture-order"
-              name="order"
-              type="number"
-              min="0"
-              step="1"
-              defaultValue={editingLecture.order}
-              required
-            />
-          </Field>
-          {lectureEditType === 'video' ? (
-            <Field
-              label="Replace video (optional)"
-              htmlFor="edit-lecture-source"
-            >
-              <Input
-                id="edit-lecture-source"
-                name="source"
-                type="file"
-                accept="video/*"
-              />
-            </Field>
-          ) : (
-            <Field
-              label="Update document content (optional)"
-              htmlFor="edit-lecture-content"
-            >
-              <Textarea id="edit-lecture-content" name="document_content" />
-            </Field>
-          )}
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              name="is_preview"
-              type="checkbox"
-              defaultChecked={editingLecture.is_preview}
-              className="accent-brand"
-            />
-            Allow free preview
-          </label>
-          {updateLecture.isError && (
-            <p role="alert" className="text-sm text-red-600">
-              {apiErrorMessage(
-                updateLecture.error,
-                'Could not update lecture.',
-                {
-                  includeFieldErrors: true,
-                },
-              )}
-            </p>
-          )}
-          <div className="flex gap-2">
-            <Button variant="primary" type="submit" disabled={pending}>
-              Save lecture
-            </Button>
-            <Button
-              onClick={() => {
-                setEditingLecture(null);
-                updateLecture.reset();
-              }}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
+      {orderSave.isError && orderSave.variables === 'sections' && (
+        <p role="alert" className="mb-4 text-sm text-red-700">
+          Some changes may have saved. Your requested order is retained; press
+          Save to retry. {errorMessage(orderSave.error)}
+        </p>
       )}
-      <div className="grid gap-6">
-        <form
-          onSubmit={submitSection}
-          className="rounded-2xl border border-slate-200 bg-white p-6"
-        >
-          <fieldset disabled={pending} className="grid gap-4">
-            <h2 className="text-lg font-bold">Create a section</h2>
-            <p className="text-sm text-slate-500">
-              Organize your lectures into sections.
-            </p>
-            <Field label="Section title" htmlFor="section-title" required>
-              <Input
-                id="section-title"
-                name="title"
-                required
-                maxLength={250}
-                placeholder="e.g. Getting started"
-              />
-            </Field>
-            <Field label="Description" htmlFor="section-description" required>
-              <Textarea id="section-description" name="description" required />
-            </Field>
-            {addSection.isError && (
-              <p role="alert" className="text-sm text-red-600">
-                {apiErrorMessage(
-                  addSection.error,
-                  'Could not create section.',
-                  { includeFieldErrors: true },
-                )}
-              </p>
-            )}
-            <div>
-              <Button variant="primary" type="submit">
-                {addSection.isPending ? 'Creating…' : 'Create section'}
-              </Button>
-            </div>
-          </fieldset>
-        </form>
-        <form
-          onSubmit={submitLecture}
-          className="rounded-2xl border border-slate-200 bg-white p-6"
-        >
-          <fieldset disabled={pending} className="grid gap-5">
-            <h2 className="text-lg font-bold">Create a lecture</h2>
-            <Field label="Section" htmlFor="lecture-section" required>
-              <Select
-                id="lecture-section"
-                label="Section"
-                value={section}
-                onChange={setSection}
-                disabled={sections.isPending || sections.isError}
-                options={[
-                  {
-                    value: '',
-                    label: sections.isPending
-                      ? 'Loading sections…'
-                      : 'Choose a section',
-                  },
-                  ...activeSections.map((item) => ({
-                    value: item.id,
-                    label: item.title,
-                  })),
-                ]}
-              />
-            </Field>
-            {sections.isError && (
-              <div role="alert">
-                Could not load sections.{' '}
-                <Button onClick={() => void sections.refetch()}>Retry</Button>
+      <div className="mb-3 flex items-center justify-between text-sm text-slate-500">
+        <span>{sectionRows.length} sections</span>
+        {sectionIds && (
+          <span className="font-medium text-amber-700">Unsaved order</span>
+        )}
+      </div>
+      {sections.isPending ? (
+        <p role="status" className="rounded-xl bg-white p-8">
+          Loading sections…
+        </p>
+      ) : sections.isError ? (
+        <div role="alert">
+          <p>{apiErrorMessage(sections.error, 'Could not load sections.')}</p>
+          <Button onClick={() => void sections.refetch()}>Retry</Button>
+        </div>
+      ) : !sectionRows.length ? (
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center">
+          <h2 className="text-lg font-semibold">
+            Build your course curriculum
+          </h2>
+          <p className="mt-2 text-sm text-slate-500">
+            Create your first section to start organizing lectures.
+          </p>
+        </div>
+      ) : (
+        <SortableCards
+          label="Course sections"
+          items={sectionRows}
+          disabled={busy}
+          onReorder={(items) => {
+            setSectionIds(items.map((item) => item.id));
+            setNotice('');
+          }}
+          renderItem={(item, index) => (
+            <>
+              <span className="hidden rounded-lg bg-violet-50 px-3 py-2 text-sm font-semibold text-violet-600 sm:block">
+                {String(index + 1).padStart(2, '0')}
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2 className="break-words font-semibold text-slate-800">
+                  {item.title}
+                </h2>
+                <p className="mt-1 line-clamp-1 text-sm text-slate-500">
+                  {item.description}
+                </p>
               </div>
-            )}
-            {sections.isSuccess && !activeSections.length && (
-              <p className="text-sm text-slate-500">
-                Create your first section above before adding a lecture.
-              </p>
-            )}
-            <Field label="Lecture title" htmlFor="lecture-title" required>
-              <Input id="lecture-title" name="title" required maxLength={250} />
-            </Field>
-            <Field label="Description" htmlFor="lecture-description" required>
-              <Textarea id="lecture-description" name="description" required />
-            </Field>
-            <Field label="Lecture type" htmlFor="lecture-type">
-              <Select
-                id="lecture-type"
-                label="Lecture type"
-                value={type}
-                onChange={setType}
-                options={[
-                  { value: 'video', label: 'Video' },
-                  { value: 'document', label: 'Document' },
-                ]}
-              />
-            </Field>
-            {type === 'video' ? (
-              <Field label="Video" htmlFor="lecture-source" required>
-                <Input
-                  id="lecture-source"
-                  name="source"
-                  type="file"
-                  accept="video/*"
-                  required
-                />
-              </Field>
-            ) : (
-              <Field
-                label="Document content"
-                htmlFor="lecture-content"
-                required
+              <details
+                className="relative shrink-0"
+                onBlur={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget))
+                    event.currentTarget.open = false;
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') {
+                    event.currentTarget.open = false;
+                    event.currentTarget.querySelector('summary')?.focus();
+                  }
+                }}
               >
-                <Textarea
-                  id="lecture-content"
-                  name="document_content"
-                  required
-                />
-              </Field>
-            )}
-            <Field label="Order" htmlFor="lecture-order">
-              <Input
-                id="lecture-order"
-                name="order"
-                type="number"
-                min="0"
-                step="1"
-                defaultValue="0"
-                required
-              />
-            </Field>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                name="is_preview"
-                type="checkbox"
-                className="accent-brand"
-              />
-              Allow free preview
-            </label>
-            {addLecture.isError && (
-              <p role="alert" className="text-sm text-red-600">
-                {apiErrorMessage(
-                  addLecture.error,
-                  'Could not create lecture.',
-                  { includeFieldErrors: true },
-                )}
-              </p>
-            )}
+                <summary
+                  aria-label={`Actions for ${item.title}`}
+                  className="cursor-pointer list-none rounded-lg px-3 py-2 text-xl text-slate-500 hover:bg-slate-100"
+                >
+                  ⋮
+                </summary>
+                <div className="absolute right-0 top-11 z-30 grid w-44 gap-1 rounded-xl border border-slate-100 bg-white p-2 shadow-xl">
+                  <Button
+                    disabled={busy}
+                    onClick={(event) => {
+                      event.currentTarget
+                        .closest('details')
+                        ?.removeAttribute('open');
+                      setManagedSection(item);
+                      orderSave.reset();
+                    }}
+                  >
+                    <GearIcon aria-hidden="true" className="size-4 shrink-0" />
+                    Manage lectures
+                  </Button>
+                  <Button
+                    disabled={busy || !!sectionIds}
+                    onClick={(event) => {
+                      event.currentTarget
+                        .closest('details')
+                        ?.removeAttribute('open');
+                      sectionSave.reset();
+                      setSectionEditor(item);
+                    }}
+                  >
+                    Edit section
+                  </Button>
+                </div>
+              </details>
+            </>
+          )}
+        />
+      )}
+      {sectionEditor && (
+        <CurriculumDialog
+          title={sectionEditor === 'new' ? 'Create section' : 'Edit section'}
+          onClose={() => {
+            if (!busy) setSectionEditor(null);
+          }}
+        >
+          <SectionForm
+            record={sectionEditor === 'new' ? undefined : sectionEditor}
+            pending={busy}
+            error={
+              sectionSave.isError ? errorMessage(sectionSave.error) : undefined
+            }
+            onSubmit={(data) => sectionSave.mutate(data)}
+          />
+        </CurriculumDialog>
+      )}
+      {managedSection && !lectureEditor && !deleteLecture && (
+        <CurriculumDialog title="Manage lectures" onClose={closeLectures}>
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <div>
+              <p className="font-semibold text-slate-800">
+                {managedSection.title}
+              </p>
+              <p className="mt-1 text-sm text-slate-500">
+                {lectureRows.length} lectures
+                {lectureIds ? ' · Unsaved order' : ''}
+              </p>
+            </div>
+            <div className="flex gap-3">
               <Button
                 variant="primary"
-                type="submit"
-                disabled={!section || sections.isPending || sections.isError}
+                disabled={!lectureWritesEnabled || !lectureIds || busy}
+                title={
+                  !lectureWritesEnabled
+                    ? 'Lecture saving is not available yet'
+                    : undefined
+                }
+                onClick={() => {
+                  setNotice('');
+                  orderSave.mutate('lectures');
+                }}
               >
-                {addLecture.isPending ? 'Creating…' : 'Create lecture'}
+                {orderSave.isPending ? 'Saving…' : 'Save'}
+              </Button>
+              <Button
+                variant="primary"
+                disabled={busy || !!lectureIds || !lectures.isSuccess}
+                onClick={() => {
+                  lectureSave.reset();
+                  setLectureEditor('new');
+                }}
+              >
+                + New lecture
               </Button>
             </div>
-          </fieldset>
-        </form>
-      </div>
+          </div>
+          {orderSave.isError && orderSave.variables === 'lectures' && (
+            <p role="alert" className="mb-4 text-sm text-red-700">
+              Some changes may have saved. Press Save to retry your requested
+              order. {errorMessage(orderSave.error)}
+            </p>
+          )}
+          {notice && (
+            <p role="status" className="mb-4 text-sm text-emerald-700">
+              {notice}
+            </p>
+          )}
+          {lectures.isPending ? (
+            <p role="status">Loading lectures…</p>
+          ) : lectures.isError ? (
+            <div role="alert">
+              <p>
+                {apiErrorMessage(lectures.error, 'Could not load lectures.')}
+              </p>
+              <Button onClick={() => void lectures.refetch()}>Retry</Button>
+            </div>
+          ) : !lectureRows.length ? (
+            <div className="rounded-xl border border-dashed border-slate-200 p-10 text-center text-slate-500">
+              No lectures yet. Add your first lecture to this section.
+            </div>
+          ) : (
+            <SortableCards
+              label="Section lectures"
+              items={lectureRows}
+              disabled={busy}
+              onReorder={(items) => {
+                setLectureIds(items.map((item) => item.id));
+                setNotice('');
+              }}
+              renderItem={(item) => (
+                <>
+                  <span
+                    aria-hidden="true"
+                    className="rounded-lg bg-violet-50 p-2 text-violet-600"
+                  >
+                    {item.lecture_type === 'video' ? (
+                      <LectureIcon className="size-5" />
+                    ) : (
+                      <BookIcon className="size-5" />
+                    )}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="break-words text-sm font-semibold">
+                      {item.title}
+                    </h3>
+                    <p className="mt-1 text-xs capitalize text-slate-500">
+                      {item.lecture_type} · {item.status}
+                      {item.is_preview ? ' · Free preview' : ''}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <Button
+                      aria-label={`Edit lecture ${item.title}`}
+                      disabled={busy || !!lectureIds}
+                      onClick={() => {
+                        lectureSave.reset();
+                        setLectureEditor(item);
+                      }}
+                    >
+                      Edit lecture
+                    </Button>
+                    <Button
+                      aria-label={`Delete lecture ${item.title}`}
+                      title={
+                        !lectureWritesEnabled
+                          ? 'Lecture deletion is not available yet'
+                          : undefined
+                      }
+                      disabled={!lectureWritesEnabled || busy || !!lectureIds}
+                      onClick={() => {
+                        lectureDelete.reset();
+                        setDeleteLecture(item);
+                      }}
+                    >
+                      <TrashIcon aria-hidden="true" className="size-4" />
+                    </Button>
+                  </div>
+                </>
+              )}
+            />
+          )}
+        </CurriculumDialog>
+      )}
+      {lectureEditor && (
+        <CurriculumDialog
+          title={lectureEditor === 'new' ? 'Create lecture' : 'Edit lecture'}
+          onClose={() => {
+            if (!busy) setLectureEditor(null);
+          }}
+        >
+          <LectureForm
+            saveEnabled={lectureWritesEnabled}
+            record={lectureEditor === 'new' ? undefined : lectureEditor}
+            pending={busy}
+            error={
+              lectureSave.isError ? errorMessage(lectureSave.error) : undefined
+            }
+            onSubmit={(data) => lectureSave.mutate(data)}
+          />
+        </CurriculumDialog>
+      )}
+      {deleteLecture && (
+        <CurriculumDialog
+          title="Delete lecture"
+          onClose={() => {
+            if (!busy) setDeleteLecture(null);
+          }}
+        >
+          <p className="mb-6">
+            Delete “{deleteLecture.title}” from this section?
+          </p>
+          {lectureDelete.isError && (
+            <p role="alert" className="mb-4 text-red-700">
+              {errorMessage(lectureDelete.error)}
+            </p>
+          )}
+          <div className="flex justify-end gap-3">
+            <Button disabled={busy} onClick={() => setDeleteLecture(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              disabled={busy || !lectureWritesEnabled}
+              title={
+                !lectureWritesEnabled
+                  ? 'Lecture deletion is not available yet'
+                  : undefined
+              }
+              onClick={() => lectureDelete.mutate(deleteLecture.id)}
+            >
+              {busy ? 'Deleting…' : 'Delete lecture'}
+            </Button>
+          </div>
+        </CurriculumDialog>
+      )}
     </section>
   );
 }

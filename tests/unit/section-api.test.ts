@@ -2,6 +2,10 @@ import { afterEach, beforeEach, expect, it } from 'vitest';
 import { AxiosHeaders, type InternalAxiosRequestConfig } from 'axios';
 import { api, authTransport, resetCsrf } from '../../src/api/axios';
 import {
+  createAdminSection,
+  getAdminSection,
+  updateAdminSection,
+  deleteAdminSection,
   listAdminSections,
   patchAdminSection,
 } from '../../src/api/services/sections';
@@ -41,7 +45,6 @@ it('loads sections from the instructor management endpoint with server filters',
     search: 'introduction',
     course: 'course-id',
     course_slug: 'python-basics',
-    instructor: 'instructor-uuid',
     status: 'published' as const,
     ordering: 'order,-created_at',
   };
@@ -93,4 +96,52 @@ it('patches only the section publication status', async () => {
   expect(requests[0].method).toBe('patch');
   expect(requests[0].url).toBe('/api/v1/section/instructor/all/section-id/');
   expect(JSON.parse(requests[0].data)).toEqual({ status: 'rejected' });
+});
+
+it('sends authenticated JSON writes and handles an empty deletion response', async () => {
+  const requests: InternalAxiosRequestConfig[] = [];
+  api.defaults.adapter = async (config) => {
+    requests.push(config);
+    return response(
+      config.method === 'delete' ? '' : { id: 'section-id' },
+      config,
+      config.method === 'delete' ? 204 : 200,
+    );
+  };
+  const payload = {
+    title: 'Introduction',
+    description: 'Python basics',
+    course: 'course-id',
+    order: 1,
+    status: 'draft' as const,
+  };
+  await createAdminSection(payload);
+  await getAdminSection('section-id');
+  await patchAdminSection('section-id', { title: 'Fundamentals', order: 2 });
+  await updateAdminSection('section-id', payload);
+  expect(await deleteAdminSection('section-id')).toBeUndefined();
+  expect(requests.map((request) => request.method)).toEqual([
+    'post',
+    'get',
+    'patch',
+    'put',
+    'delete',
+  ]);
+  expect(requests[0].url).toBe('/api/v1/section/instructor/all/');
+  for (const request of requests.slice(1))
+    expect(request.url).toBe('/api/v1/section/instructor/all/section-id/');
+  for (const request of requests) {
+    expect(request.withCredentials).toBe(true);
+    if (request.method !== 'get')
+      expect(request.headers.get('X-CSRFToken')).toBe('csrf');
+    if (['post', 'put', 'patch'].includes(request.method!))
+      expect(request.headers.get('Content-Type')).toBe('application/json');
+  }
+  expect(JSON.parse(requests[0].data)).toEqual(payload);
+  expect(JSON.parse(requests[2].data)).toEqual({
+    title: 'Fundamentals',
+    order: 2,
+  });
+  expect(JSON.parse(requests[3].data)).toEqual(payload);
+  expect(requests[4].data).toBeUndefined();
 });

@@ -2,9 +2,14 @@ import { afterEach, beforeEach, expect, it } from 'vitest';
 import { AxiosHeaders, type InternalAxiosRequestConfig } from 'axios';
 import { api, authTransport, resetCsrf } from '../../src/api/axios';
 import {
+  createInstructorLecture,
+  deleteInstructorLecture,
   getAdminLecture,
   listAdminLectures,
+  patchInstructorLecture,
   patchAdminLecture,
+  submitInstructorLecture,
+  updateInstructorLecture,
 } from '../../src/api/services/lectures';
 
 const originalAdapter = api.defaults.adapter;
@@ -102,4 +107,93 @@ it('uses UUID details and limits lecture patches to status and rejection reason'
   });
   expect(JSON.parse(requests[2].data)).toEqual({ status: 'draft' });
   expect(JSON.parse(requests[3].data)).toEqual({ status: 'rejected' });
+});
+
+it('creates document lectures as JSON and supports PUT, PATCH, and soft-delete', async () => {
+  const calls: InternalAxiosRequestConfig[] = [];
+  api.defaults.adapter = async (config) => {
+    calls.push(config);
+    return response(
+      config.method === 'delete'
+        ? { message: 'Lecture deleted successfully' }
+        : { id: 'lecture-uuid' },
+      config,
+      config.method === 'delete' ? 200 : 201,
+    );
+  };
+  const lecture = {
+    title: 'Introduction',
+    description: 'An introduction to the course',
+    lecture_type: 'document' as const,
+    is_preview: false,
+    document_content: 'Lesson content',
+    resources: [],
+    order: 1,
+    course: 'course-uuid',
+    section: 'section-uuid',
+  };
+  await createInstructorLecture(lecture);
+  await updateInstructorLecture('lecture-uuid', lecture);
+  await patchInstructorLecture('lecture-uuid', { order: 2 });
+  expect(await deleteInstructorLecture('lecture-uuid')).toEqual({
+    message: 'Lecture deleted successfully',
+  });
+  expect(calls.map(({ method, url }) => [method, url])).toEqual([
+    ['post', '/api/v1/lecture/instructor/all/'],
+    ['put', '/api/v1/lecture/instructor/all/lecture-uuid/'],
+    ['patch', '/api/v1/lecture/instructor/all/lecture-uuid/'],
+    ['delete', '/api/v1/lecture/instructor/all/lecture-uuid/'],
+  ]);
+  expect(JSON.parse(calls[0].data)).toEqual(lecture);
+  expect(JSON.parse(calls[1].data)).toEqual(lecture);
+  expect(JSON.parse(calls[2].data)).toEqual({ order: 2 });
+  expect(JSON.parse(calls[0].data)).not.toHaveProperty('status');
+  expect(JSON.parse(calls[1].data)).not.toHaveProperty('status');
+});
+
+it('sends video and thumbnail uploads as multipart data', async () => {
+  const source = new File(['video'], 'lesson.mp4', { type: 'video/mp4' });
+  const thumbnail = new File(['image'], 'thumb.png', { type: 'image/png' });
+  api.defaults.adapter = async (config) => {
+    expect(config.method).toBe('post');
+    expect(config.headers.get('Content-Type')).toBe(false);
+    const body = config.data as FormData;
+    expect(body.get('source')).toBe(source);
+    expect(body.get('thumbnail')).toBe(thumbnail);
+    expect(body.get('is_preview')).toBe('false');
+    expect(body.get('resources')).toBe('[]');
+    return response({ id: 'lecture-uuid' }, config, 201);
+  };
+  await createInstructorLecture({
+    title: 'Video lesson',
+    description: 'Watch this',
+    lecture_type: 'video',
+    is_preview: false,
+    order: 1,
+    course: 'course-uuid',
+    section: 'section-uuid',
+    resources: [],
+    source,
+    thumbnail,
+  });
+});
+
+it('submits instructor lectures using the explicit approval action', async () => {
+  api.defaults.adapter = async (config) => {
+    expect(config.method).toBe('post');
+    expect(config.url).toBe(
+      '/api/v1/lecture/instructor/all/lecture-uuid/submit/',
+    );
+    return response(
+      {
+        message: 'Lecture submitted for review.',
+        status: 'in-review',
+      },
+      config,
+    );
+  };
+  expect(await submitInstructorLecture('lecture-uuid')).toEqual({
+    message: 'Lecture submitted for review.',
+    status: 'in-review',
+  });
 });

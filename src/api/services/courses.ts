@@ -37,6 +37,11 @@ export async function listCourseOptions(
 
 export type CourseStatus =
   'published' | 'in-review' | 'approved' | 'draft' | 'rejected';
+
+export interface ContentSubmission {
+  message: string;
+  status: 'in-review';
+}
 export interface AdminCourse {
   id: string;
   created_at: string | null;
@@ -95,6 +100,12 @@ export async function getAdminCourse(id: string): Promise<AdminCourse> {
   return (await api.get<AdminCourse>(ENDPOINTS.COURSE.ADMIN_DETAIL(id))).data;
 }
 
+export async function submitInstructorCourse(
+  id: string,
+): Promise<ContentSubmission> {
+  return (await api.post<ContentSubmission>(ENDPOINTS.COURSE.SUBMIT(id))).data;
+}
+
 export async function patchAdminCourse(
   id: string,
   status: CourseStatus,
@@ -120,7 +131,6 @@ export interface CreateCoursePayload {
   tags?: string[];
   is_free?: boolean;
   price?: number;
-  status?: CourseStatus;
   is_best_seller?: boolean;
   total_hours?: string;
   total_articles?: number;

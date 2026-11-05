@@ -38,7 +38,8 @@ export async function mockCourses(page: Page) {
   const requests: URLSearchParams[] = [];
   const patchBodies: unknown[] = [];
   const methods: string[] = [];
-  const state = { fail: false, requests, patchBodies, methods };
+  const submissions: string[] = [];
+  const state = { fail: false, requests, patchBodies, methods, submissions };
   const records = courses.map((course) => ({ ...course }));
   await page.route('**/api/v1/category/**', (route) =>
     route.fulfill({
@@ -66,6 +67,23 @@ export async function mockCourses(page: Page) {
     const url = new URL(request.url());
     const params = url.searchParams;
     const endpointPath = new URL(courseEndpoint, url.origin).pathname;
+    if (url.pathname.endsWith('/submit/')) {
+      const id = decodeURIComponent(
+        url.pathname.slice(endpointPath.length).replace(/\/submit\/$/, ''),
+      );
+      const course = records.find((record) => record.id === id);
+      if (!course)
+        return route.fulfill({ status: 404, json: { detail: 'Not found' } });
+      submissions.push(id);
+      course.status = 'in-review';
+      return route.fulfill({
+        json: {
+          message:
+            'Course submitted for review. It will be published once an admin approves it.',
+          status: 'in-review',
+        },
+      });
+    }
     if (url.pathname !== endpointPath) {
       const id = decodeURIComponent(
         url.pathname.slice(endpointPath.length).replace(/\/$/, ''),

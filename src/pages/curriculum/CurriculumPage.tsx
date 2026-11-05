@@ -40,8 +40,18 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { queryClient } from '../../state/queryClient';
 import { useAccessState } from '../../state/access';
 
-const sectionStatuses: SectionStatus[] = ['published', 'draft', 'rejected'];
-const lectureStatuses: LectureStatus[] = ['published', 'draft', 'rejected'];
+const sectionStatuses: SectionStatus[] = [
+  'published',
+  'in-review',
+  'draft',
+  'rejected',
+];
+const lectureStatuses: LectureStatus[] = [
+  'published',
+  'in-review',
+  'draft',
+  'rejected',
+];
 const statusOptions = (values: readonly string[]) =>
   values.map((value) => ({
     value,

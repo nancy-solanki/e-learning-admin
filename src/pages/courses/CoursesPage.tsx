@@ -6,7 +6,13 @@ import {
 } from '../../api/services/options';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+} from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { BookIcon, CloseIcon } from '../../components/icons/AdminIcons';
 import { Button } from '../../components/ui/Button';
@@ -14,11 +20,13 @@ import { Drawer } from '../../components/ui/Drawer';
 import { Select } from '../../components/ui/Select';
 import { OrderingSelect } from '../../components/ui/OrderingSelect';
 import { Field, Input } from '../../components/ui/Input';
+import { ContentApproval } from '../../components/ui/ContentApproval';
 import { useAccessState } from '../../state/access';
 import { apiErrorMessage } from '../../api/errors';
 import {
   getAdminCourse,
   listAdminCourses,
+  submitInstructorCourse,
   type AdminCourse,
   type AdminCoursePage,
   type AdminCourseFilters,
@@ -298,6 +306,7 @@ export default function CoursesPage() {
     isInstructor: instructor,
   } = access;
   const allowed = access.canAccess('courses');
+  const queryClient = useQueryClient();
   const [params, setParams] = useSearchParams();
   const filters: AdminCourseFilters = {};
   const status = params.get('status');
@@ -417,6 +426,30 @@ export default function CoursesPage() {
         signal,
       ),
     enabled: allowed && search === searchInput.trim(),
+  });
+  const courseSubmit = useMutation({
+    mutationFn: (id: string) => submitInstructorCourse(id),
+    onSuccess: async (result, id) => {
+      queryClient.setQueriesData<InfiniteData<AdminCoursePage>>(
+        { queryKey: ['admin-courses'] },
+        (current) =>
+          current && {
+            ...current,
+            pages: current.pages.map((page) => ({
+              ...page,
+              results: page.results.map((course) =>
+                course.id === id
+                  ? { ...course, status: result.status }
+                  : course,
+              ),
+            })),
+          },
+      );
+      queryClient.setQueryData<AdminCourse>(['admin-course', id], (current) =>
+        current ? { ...current, status: result.status } : current,
+      );
+      await queryClient.invalidateQueries({ queryKey: ['admin-courses'] });
+    },
   });
   const { hasNextPage, isFetching, isError, fetchNextPage } = query;
   useEffect(() => {
@@ -560,9 +593,38 @@ export default function CoursesPage() {
                 <div className="flex flex-1 flex-col p-5">
                   <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
                     <BookIcon className="mr-auto size-6 text-[#8062bc]" />
-                    <span className="rounded bg-violet-50 px-2 py-1">
-                      {statusLabel(course.status)}
-                    </span>
+                    <ContentApproval
+                      status={course.status}
+                      rejectReason={course.reject_reason}
+                      pending={
+                        courseSubmit.isPending &&
+                        courseSubmit.variables === course.id
+                      }
+                      error={
+                        courseSubmit.isError &&
+                        courseSubmit.variables === course.id
+                          ? apiErrorMessage(
+                              courseSubmit.error,
+                              'Could not submit the course for approval.',
+                              { includeFieldErrors: true },
+                            )
+                          : undefined
+                      }
+                      message={
+                        courseSubmit.isSuccess &&
+                        courseSubmit.variables === course.id
+                          ? courseSubmit.data.message
+                          : ''
+                      }
+                      onSubmit={
+                        instructor && !course.deleted_at
+                          ? () => {
+                              courseSubmit.reset();
+                              courseSubmit.mutate(course.id);
+                            }
+                          : undefined
+                      }
+                    />
                     {course.deleted_at && (
                       <span className="rounded bg-red-50 px-2 py-1 text-red-700">
                         Deleted

@@ -189,7 +189,6 @@ function CourseForm({ course }: { course?: AdminCourse }) {
           ...(draft.thumbnail ? { thumbnail: draft.thumbnail } : {}),
           is_free: draft.is_free,
           price: draft.is_free ? 0 : Number(draft.price),
-          ...(!original ? { status: 'draft' as const } : {}),
         });
       } catch {
         /* Mutation displays API errors without discarding the form. */

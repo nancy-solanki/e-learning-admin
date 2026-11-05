@@ -3,11 +3,15 @@ import { AxiosHeaders, type InternalAxiosRequestConfig } from 'axios';
 import { api, authTransport, resetCsrf } from '../../src/api/axios';
 import {
   createAdminSection,
+  createInstructorSection,
   getAdminSection,
   updateAdminSection,
   deleteAdminSection,
+  deleteInstructorSection,
   listAdminSections,
   patchAdminSection,
+  patchInstructorSection,
+  submitInstructorSection,
 } from '../../src/api/services/sections';
 
 const originalAdapter = api.defaults.adapter;
@@ -31,6 +35,44 @@ beforeEach(() => {
   resetCsrf();
   authTransport.defaults.adapter = async (config) =>
     response({ csrfToken: 'csrf' }, config);
+});
+
+it('creates and updates instructor sections without status, and submits for review', async () => {
+  const requests: InternalAxiosRequestConfig[] = [];
+  api.defaults.adapter = async (config) => {
+    requests.push(config);
+    return response(
+      config.url?.endsWith('/submit/')
+        ? {
+            message: 'Section submitted for review.',
+            status: 'in-review',
+          }
+        : { id: 'section-id' },
+      config,
+    );
+  };
+  const payload = {
+    title: 'Introduction',
+    description: 'Python basics',
+    course: 'course-id',
+    order: 1,
+  };
+  await createInstructorSection(payload);
+  await patchInstructorSection('section-id', { title: 'Fundamentals' });
+  expect(await submitInstructorSection('section-id')).toEqual({
+    message: 'Section submitted for review.',
+    status: 'in-review',
+  });
+  await deleteInstructorSection('section-id');
+  expect(requests.map(({ method, url }) => [method, url])).toEqual([
+    ['post', '/api/v1/section/instructor/all/'],
+    ['patch', '/api/v1/section/instructor/all/section-id/'],
+    ['post', '/api/v1/section/instructor/all/section-id/submit/'],
+    ['delete', '/api/v1/section/instructor/all/section-id/'],
+  ]);
+  expect(JSON.parse(requests[0].data)).toEqual(payload);
+  expect(JSON.parse(requests[0].data)).not.toHaveProperty('status');
+  expect(JSON.parse(requests[1].data)).not.toHaveProperty('status');
 });
 
 afterEach(() => {

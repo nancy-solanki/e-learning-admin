@@ -7,6 +7,7 @@ import {
   getAdminCourse,
   listAdminCourses,
   patchAdminCourse,
+  submitInstructorCourse,
 } from '../../src/api/services/courses';
 
 const originalAdapter = api.defaults.adapter;
@@ -126,7 +127,6 @@ it('creates an instructor course as authenticated multipart and returns the dire
     tags: ['Python', 'Beginner'],
     is_free: false,
     price: 999,
-    status: 'draft' as const,
   };
   api.defaults.adapter = async (config) => {
     expect(config.method).toBe('post');
@@ -143,11 +143,32 @@ it('creates an instructor course as authenticated multipart and returns the dire
     expect(body.get('is_free')).toBe('false');
     expect(body.get('requirements')).toBe(payload.requirements);
     expect(body.has('instructor')).toBe(false);
+    expect(body.has('status')).toBe(false);
     return response({ id: 'course-uuid', ...payload }, config, 201);
   };
   expect(await createInstructorCourse(payload)).toEqual({
     id: 'course-uuid',
     ...payload,
+  });
+});
+
+it('submits instructor courses for approval and returns workflow status/message', async () => {
+  api.defaults.adapter = async (config) => {
+    expect(config.method).toBe('post');
+    expect(config.url).toBe(
+      '/api/v1/course/instructor/all/course-uuid/submit/',
+    );
+    return response(
+      {
+        message: 'Course submitted for review.',
+        status: 'in-review',
+      },
+      config,
+    );
+  };
+  expect(await submitInstructorCourse('course-uuid')).toEqual({
+    message: 'Course submitted for review.',
+    status: 'in-review',
   });
 });
 

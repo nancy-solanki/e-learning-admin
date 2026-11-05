@@ -9,12 +9,14 @@ import {
 } from '../../api/services/lectures';
 import {
   listAdminSections,
-  createAdminSection,
-  patchAdminSection,
+  createInstructorSection,
+  patchInstructorSection,
+  deleteInstructorSection,
+  submitInstructorSection,
   type AdminSection,
 } from '../../api/services/sections';
+import { submitInstructorLecture } from '../../api/services/lectures';
 import {
-  lectureWritesEnabled,
   saveCurriculumOrder,
   saveInstructorLecture,
   deleteInstructorLecture,
@@ -29,6 +31,11 @@ import {
 } from '../../components/icons/AdminIcons';
 import { CurriculumDialog } from '../../components/curriculum/CurriculumDialog';
 import { SortableCards } from '../../components/curriculum/SortableCards';
+import {
+  ContentApproval,
+  ContentApprovalAction,
+} from '../../components/ui/ContentApproval';
+import { ActionMenu } from '../../components/ui/ActionMenu';
 import {
   SectionForm,
   LectureForm,
@@ -59,6 +66,7 @@ function Curriculum({ courseId }: { courseId: string }) {
   const [sectionEditor, setSectionEditor] = useState<
     AdminSection | 'new' | null
   >(null);
+  const [deleteSection, setDeleteSection] = useState<AdminSection | null>(null);
   const [managedSection, setManagedSection] = useState<AdminSection | null>(
     null,
   );
@@ -66,9 +74,14 @@ function Curriculum({ courseId }: { courseId: string }) {
     AdminLecture | 'new' | null
   >(null);
   const [deleteLecture, setDeleteLecture] = useState<AdminLecture | null>(null);
+  const [restoreMode, setRestoreMode] = useState(false);
   const [notice, setNotice] = useState('');
   const sectionKey = ['course-curriculum-sections', courseId];
-  const lectureKey = ['course-curriculum-lectures', courseId];
+  const lectureKey = [
+    'course-curriculum-lectures',
+    courseId,
+    managedSection?.id,
+  ];
   const course = useQuery({
     queryKey: ['curriculum-course', courseId],
     queryFn: () => getAdminCourse(courseId),
@@ -96,7 +109,12 @@ function Curriculum({ courseId }: { courseId: string }) {
       const records: AdminLecture[] = [];
       for (let page = 1; ; page++) {
         const result = await listAdminLectures(
-          { course: courseId, page, ordering: 'order' },
+          {
+            course: courseId,
+            section: managedSection?.id,
+            page,
+            ordering: 'order',
+          },
           signal,
         );
         records.push(...result.results);
@@ -114,6 +132,9 @@ function Curriculum({ courseId }: { courseId: string }) {
     ),
     lectureIds,
   );
+  const deletedLectureRows = (lectures.data ?? [])
+    .filter((item) => item.deleted_at && item.section === managedSection?.id)
+    .sort((a, b) => a.order - b.order);
   const dirty = !!sectionIds || !!lectureIds;
   useEffect(() => {
     if (!dirty) return;
@@ -143,12 +164,11 @@ function Curriculum({ courseId }: { courseId: string }) {
           ),
         );
         if (!Object.keys(changes).length) return sectionEditor;
-        return patchAdminSection(sectionEditor.id, changes);
+        return patchInstructorSection(sectionEditor.id, changes);
       }
-      return createAdminSection({
+      return createInstructorSection({
         ...data,
         course: courseId,
-        status: 'draft',
         order: Math.max(0, ...sectionRows.map((item) => item.order)) + 1,
       });
     },
@@ -156,6 +176,15 @@ function Curriculum({ courseId }: { courseId: string }) {
       await refresh('sections');
       setSectionEditor(null);
       setNotice('Section saved.');
+    },
+  });
+  const sectionDelete = useMutation({
+    mutationFn: (id: string) => deleteInstructorSection(id),
+    onSuccess: async (_, id) => {
+      await refresh('sections');
+      setDeleteSection(null);
+      if (managedSection?.id === id) setManagedSection(null);
+      setNotice('Section deleted.');
     },
   });
   const orderSave = useMutation({
@@ -181,6 +210,7 @@ function Curriculum({ courseId }: { courseId: string }) {
       data.set('course', courseId);
       data.set('section', managedSection.id);
       if (lectureEditor && lectureEditor !== 'new') {
+        data.set('order', String(lectureEditor.order));
         if (!String(data.get('document_content') ?? '').trim())
           data.delete('document_content');
         return saveInstructorLecture(data, lectureEditor.id);
@@ -202,14 +232,52 @@ function Curriculum({ courseId }: { courseId: string }) {
     onSuccess: async () => {
       await refresh('lectures');
       setDeleteLecture(null);
+      setRestoreMode(false);
       setNotice('Lecture deleted.');
+    },
+  });
+  const lectureRestore = useMutation({
+    mutationFn: (id: string) => deleteInstructorLecture(id),
+    onSuccess: async () => {
+      await refresh('lectures');
+      setDeleteLecture(null);
+      setRestoreMode(false);
+      setNotice('Lecture restored.');
+    },
+  });
+  const sectionSubmit = useMutation({
+    mutationFn: (id: string) => submitInstructorSection(id),
+    onSuccess: async (result, id) => {
+      client.setQueryData<AdminSection[]>(sectionKey, (current) =>
+        current?.map((item) =>
+          item.id === id ? { ...item, status: result.status } : item,
+        ),
+      );
+      await refresh('sections');
+      setNotice(result.message);
+    },
+  });
+  const lectureSubmit = useMutation({
+    mutationFn: (id: string) => submitInstructorLecture(id),
+    onSuccess: async (result, id) => {
+      client.setQueryData<AdminLecture[]>(lectureKey, (current) =>
+        current?.map((item) =>
+          item.id === id ? { ...item, status: result.status } : item,
+        ),
+      );
+      await refresh('lectures');
+      setNotice(result.message);
     },
   });
   const busy =
     sectionSave.isPending ||
+    sectionDelete.isPending ||
     orderSave.isPending ||
     lectureSave.isPending ||
-    lectureDelete.isPending;
+    lectureDelete.isPending ||
+    lectureRestore.isPending ||
+    sectionSubmit.isPending ||
+    lectureSubmit.isPending;
   const errorMessage = (error: unknown) =>
     apiErrorMessage(error, 'Unable to save. Please try again.', {
       includeFieldErrors: true,
@@ -344,54 +412,69 @@ function Curriculum({ courseId }: { courseId: string }) {
                 <p className="mt-1 line-clamp-1 text-sm text-slate-500">
                   {item.description}
                 </p>
-              </div>
-              <details
-                className="relative shrink-0"
-                onBlur={(event) => {
-                  if (!event.currentTarget.contains(event.relatedTarget))
-                    event.currentTarget.open = false;
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Escape') {
-                    event.currentTarget.open = false;
-                    event.currentTarget.querySelector('summary')?.focus();
+                <ContentApproval
+                  status={item.status}
+                  rejectReason={item.reject_reason}
+                  parentWaiting={
+                    item.status === 'published' &&
+                    course.data?.status !== 'published'
                   }
-                }}
-              >
-                <summary
-                  aria-label={`Actions for ${item.title}`}
-                  className="cursor-pointer list-none rounded-lg px-3 py-2 text-xl text-slate-500 hover:bg-slate-100"
+                  error={
+                    sectionSubmit.isError && sectionSubmit.variables === item.id
+                      ? sectionSubmit.error
+                      : undefined
+                  }
+                  message={notice.includes('Section submitted') ? notice : ''}
+                  sectionNeedsLecture
+                />
+              </div>
+              <ActionMenu label={`Actions for ${item.title}`}>
+                <Button
+                  disabled={busy}
+                  className="w-full justify-start whitespace-nowrap !px-3 !py-2 text-left text-sm"
+                  onClick={() => {
+                    setManagedSection(item);
+                    orderSave.reset();
+                  }}
                 >
-                  ⋮
-                </summary>
-                <div className="absolute right-0 top-11 z-30 grid w-44 gap-1 rounded-xl border border-slate-100 bg-white p-2 shadow-xl">
-                  <Button
-                    disabled={busy}
-                    onClick={(event) => {
-                      event.currentTarget
-                        .closest('details')
-                        ?.removeAttribute('open');
-                      setManagedSection(item);
-                      orderSave.reset();
-                    }}
-                  >
-                    <GearIcon aria-hidden="true" className="size-4 shrink-0" />
-                    Manage lectures
-                  </Button>
-                  <Button
-                    disabled={busy || !!sectionIds}
-                    onClick={(event) => {
-                      event.currentTarget
-                        .closest('details')
-                        ?.removeAttribute('open');
-                      sectionSave.reset();
-                      setSectionEditor(item);
-                    }}
-                  >
-                    Edit section
-                  </Button>
-                </div>
-              </details>
+                  <GearIcon aria-hidden="true" className="size-4 shrink-0" />
+                  Manage lectures
+                </Button>
+                <ContentApprovalAction
+                  status={item.status}
+                  pending={
+                    sectionSubmit.isPending &&
+                    sectionSubmit.variables === item.id
+                  }
+                  keepMenuOpen
+                  onSubmit={() => {
+                    sectionSubmit.reset();
+                    setNotice('');
+                    sectionSubmit.mutate(item.id);
+                  }}
+                />
+                <Button
+                  disabled={busy || !!sectionIds}
+                  className="w-full justify-start whitespace-nowrap !px-3 !py-2 text-left text-sm"
+                  onClick={() => {
+                    sectionSave.reset();
+                    setSectionEditor(item);
+                  }}
+                >
+                  Edit section
+                </Button>
+                <Button
+                  disabled={busy || !!sectionIds}
+                  className="w-full justify-start whitespace-nowrap !px-3 !py-2 text-left text-sm"
+                  onClick={() => {
+                    sectionDelete.reset();
+                    setDeleteSection(item);
+                  }}
+                >
+                  <TrashIcon aria-hidden="true" className="size-4 shrink-0" />
+                  Delete section
+                </Button>
+              </ActionMenu>
             </>
           )}
         />
@@ -413,6 +496,36 @@ function Curriculum({ courseId }: { courseId: string }) {
           />
         </CurriculumDialog>
       )}
+      {deleteSection && (
+        <CurriculumDialog
+          title="Delete section"
+          onClose={() => {
+            if (!busy) setDeleteSection(null);
+          }}
+        >
+          <p className="mb-6">
+            Delete “{deleteSection.title}”? It will disappear from your sections
+            and cannot be restored here.
+          </p>
+          {sectionDelete.isError && (
+            <p role="alert" className="mb-4 text-red-700">
+              {errorMessage(sectionDelete.error)}
+            </p>
+          )}
+          <div className="flex justify-end gap-3">
+            <Button disabled={busy} onClick={() => setDeleteSection(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              disabled={busy}
+              onClick={() => sectionDelete.mutate(deleteSection.id)}
+            >
+              {sectionDelete.isPending ? 'Deleting…' : 'Delete section'}
+            </Button>
+          </div>
+        </CurriculumDialog>
+      )}
       {managedSection && !lectureEditor && !deleteLecture && (
         <CurriculumDialog title="Manage lectures" onClose={closeLectures}>
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -428,12 +541,7 @@ function Curriculum({ courseId }: { courseId: string }) {
             <div className="flex gap-3">
               <Button
                 variant="primary"
-                disabled={!lectureWritesEnabled || !lectureIds || busy}
-                title={
-                  !lectureWritesEnabled
-                    ? 'Lecture saving is not available yet'
-                    : undefined
-                }
+                disabled={!lectureIds || busy}
                 onClick={() => {
                   setNotice('');
                   orderSave.mutate('lectures');
@@ -503,14 +611,52 @@ function Curriculum({ courseId }: { courseId: string }) {
                       {item.title}
                     </h3>
                     <p className="mt-1 text-xs capitalize text-slate-500">
-                      {item.lecture_type} · {item.status}
+                      {item.lecture_type}
                       {item.is_preview ? ' · Free preview' : ''}
                     </p>
+                    <ContentApproval
+                      status={item.status}
+                      rejectReason={item.reject_reason}
+                      parentWaiting={
+                        item.status === 'published' &&
+                        (sections.data?.find(
+                          (section) => section.id === item.section,
+                        )?.status !== 'published' ||
+                          course.data?.status !== 'published')
+                      }
+                      pending={
+                        lectureSubmit.isPending &&
+                        lectureSubmit.variables === item.id
+                      }
+                      error={
+                        lectureSubmit.isError &&
+                        lectureSubmit.variables === item.id
+                          ? lectureSubmit.error
+                          : undefined
+                      }
+                      message={
+                        notice.includes('Lecture submitted') ? notice : ''
+                      }
+                    />
                   </div>
-                  <div className="flex flex-wrap justify-end gap-2">
+                  <ActionMenu label={`Actions for lecture ${item.title}`}>
+                    <ContentApprovalAction
+                      status={item.status}
+                      pending={
+                        lectureSubmit.isPending &&
+                        lectureSubmit.variables === item.id
+                      }
+                      keepMenuOpen
+                      onSubmit={() => {
+                        lectureSubmit.reset();
+                        setNotice('');
+                        lectureSubmit.mutate(item.id);
+                      }}
+                    />
                     <Button
                       aria-label={`Edit lecture ${item.title}`}
                       disabled={busy || !!lectureIds}
+                      className="w-full justify-start whitespace-nowrap !px-3 !py-2 text-left text-sm"
                       onClick={() => {
                         lectureSave.reset();
                         setLectureEditor(item);
@@ -520,23 +666,54 @@ function Curriculum({ courseId }: { courseId: string }) {
                     </Button>
                     <Button
                       aria-label={`Delete lecture ${item.title}`}
-                      title={
-                        !lectureWritesEnabled
-                          ? 'Lecture deletion is not available yet'
-                          : undefined
-                      }
-                      disabled={!lectureWritesEnabled || busy || !!lectureIds}
+                      disabled={busy || !!lectureIds}
+                      className="w-full justify-start whitespace-nowrap !px-3 !py-2 text-left text-sm"
                       onClick={() => {
                         lectureDelete.reset();
+                        setRestoreMode(false);
                         setDeleteLecture(item);
                       }}
                     >
-                      <TrashIcon aria-hidden="true" className="size-4" />
+                      <TrashIcon
+                        aria-hidden="true"
+                        className="size-4 shrink-0"
+                      />
+                      Delete lecture
                     </Button>
-                  </div>
+                  </ActionMenu>
                 </>
               )}
             />
+          )}
+          {deletedLectureRows.length > 0 && (
+            <section className="mt-8 border-t border-slate-200 pt-5">
+              <h3 className="mb-3 text-sm font-semibold text-slate-600">
+                Deleted lectures
+              </h3>
+              <ul className="grid gap-3">
+                {deletedLectureRows.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 p-4"
+                  >
+                    <span className="font-medium text-slate-600">
+                      {item.title}
+                    </span>
+                    <Button
+                      disabled={busy || !!lectureIds}
+                      onClick={() => {
+                        lectureDelete.reset();
+                        lectureRestore.reset();
+                        setRestoreMode(true);
+                        setDeleteLecture(item);
+                      }}
+                    >
+                      Restore lecture
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
         </CurriculumDialog>
       )}
@@ -548,7 +725,6 @@ function Curriculum({ courseId }: { courseId: string }) {
           }}
         >
           <LectureForm
-            saveEnabled={lectureWritesEnabled}
             record={lectureEditor === 'new' ? undefined : lectureEditor}
             pending={busy}
             error={
@@ -560,34 +736,52 @@ function Curriculum({ courseId }: { courseId: string }) {
       )}
       {deleteLecture && (
         <CurriculumDialog
-          title="Delete lecture"
+          title={restoreMode ? 'Restore lecture' : 'Delete lecture'}
           onClose={() => {
-            if (!busy) setDeleteLecture(null);
+            if (!busy) {
+              setDeleteLecture(null);
+              setRestoreMode(false);
+            }
           }}
         >
           <p className="mb-6">
-            Delete “{deleteLecture.title}” from this section?
+            {restoreMode
+              ? `Restore “${deleteLecture.title}” to this section?`
+              : `Delete “${deleteLecture.title}” from this section?`}
           </p>
-          {lectureDelete.isError && (
+          {(restoreMode ? lectureRestore.isError : lectureDelete.isError) && (
             <p role="alert" className="mb-4 text-red-700">
-              {errorMessage(lectureDelete.error)}
+              {errorMessage(
+                restoreMode ? lectureRestore.error : lectureDelete.error,
+              )}
             </p>
           )}
           <div className="flex justify-end gap-3">
-            <Button disabled={busy} onClick={() => setDeleteLecture(null)}>
+            <Button
+              disabled={busy}
+              onClick={() => {
+                setDeleteLecture(null);
+                setRestoreMode(false);
+              }}
+            >
               Cancel
             </Button>
             <Button
               variant="primary"
-              disabled={busy || !lectureWritesEnabled}
-              title={
-                !lectureWritesEnabled
-                  ? 'Lecture deletion is not available yet'
-                  : undefined
+              disabled={busy}
+              onClick={() =>
+                restoreMode
+                  ? lectureRestore.mutate(deleteLecture.id)
+                  : lectureDelete.mutate(deleteLecture.id)
               }
-              onClick={() => lectureDelete.mutate(deleteLecture.id)}
             >
-              {busy ? 'Deleting…' : 'Delete lecture'}
+              {restoreMode
+                ? lectureRestore.isPending
+                  ? 'Restoring…'
+                  : 'Restore lecture'
+                : lectureDelete.isPending
+                  ? 'Deleting…'
+                  : 'Delete lecture'}
             </Button>
           </div>
         </CurriculumDialog>

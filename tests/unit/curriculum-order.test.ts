@@ -65,11 +65,21 @@ it('rejects partial failures and can retry the complete desired order', async ()
   ]);
 });
 
-it('does not send lecture writes before the API contract is connected', async () => {
-  api.defaults.adapter = async () => {
-    throw new Error('Unexpected request');
+it('persists lecture order through the instructor lecture endpoint', async () => {
+  const calls: unknown[] = [];
+  api.defaults.adapter = async (config) => {
+    calls.push([config.url, config.method, JSON.parse(config.data)]);
+    return {
+      data: {},
+      status: 200,
+      statusText: 'OK',
+      headers: new AxiosHeaders(),
+      config,
+    };
   };
-  await expect(saveCurriculumOrder('lectures', ['lecture-id'])).rejects.toThrow(
-    'Lecture saving is not available yet.',
-  );
+  await saveCurriculumOrder('lectures', ['lecture-2', 'lecture-1']);
+  expect(calls).toEqual([
+    ['/api/v1/lecture/instructor/all/lecture-2/', 'patch', { order: 1 }],
+    ['/api/v1/lecture/instructor/all/lecture-1/', 'patch', { order: 2 }],
+  ]);
 });

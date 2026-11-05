@@ -1,8 +1,13 @@
 import { useState, type FormEvent } from 'react';
 import { Button } from '../ui/Button';
 import { Field, Input, Textarea } from '../ui/Input';
+import { Select } from '../ui/Select';
+import { FileUpload } from '../ui/FileUpload';
 import type { AdminSection } from '../../api/services/sections';
-import type { AdminLecture } from '../../api/services/lectures';
+import type {
+  AdminLecture,
+  LectureType,
+} from '../../api/services/lectures';
 
 export function SectionForm({
   record,
@@ -67,23 +72,24 @@ export function SectionForm({
 
 export function LectureForm({
   record,
-  saveEnabled = true,
   pending,
   error,
   onSubmit,
 }: {
   record?: AdminLecture;
-  saveEnabled?: boolean;
   pending: boolean;
   error?: string;
   onSubmit: (data: FormData) => void;
 }) {
-  const [type, setType] = useState(record?.lecture_type ?? 'video');
+  const [type, setType] = useState<LectureType>(
+    record?.lecture_type ?? 'video',
+  );
   const [file, setFile] = useState<File | null>(null);
+  const [thumbnail, setThumbnail] = useState<File | null>(null);
   const [fileError, setFileError] = useState('');
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!saveEnabled || pending) return;
+    if (pending) return;
     const data = new FormData(event.currentTarget);
     const title = String(data.get('title') ?? '').trim();
     const description = String(data.get('description') ?? '').trim();
@@ -101,17 +107,28 @@ export function LectureForm({
     }
     data.set('title', title);
     data.set('description', description);
+    data.set('lecture_type', type);
     data.set('is_preview', data.has('is_preview') ? 'true' : 'false');
     data.delete('source');
     if (type === 'video' && file) data.set('source', file);
+    data.delete('thumbnail');
+    if (thumbnail) data.set('thumbnail', thumbnail);
     onSubmit(data);
   }
-  function chooseFile(next?: File) {
+  function chooseFile(next?: File | null) {
     if (next && !next.type.startsWith('video/')) {
       setFileError('Choose a video file.');
       return;
     }
     setFile(next ?? null);
+    setFileError('');
+  }
+  function chooseThumbnail(next?: File | null) {
+    if (next && !next.type.startsWith('image/')) {
+      setFileError('Choose an image file for the thumbnail.');
+      return;
+    }
+    setThumbnail(next ?? null);
     setFileError('');
   }
   return (
@@ -137,31 +154,19 @@ export function LectureForm({
         </Field>
         <div className="grid gap-6 sm:grid-cols-2">
           <Field label="Lecture type" htmlFor="lecture-type" required>
-            <select
+            <Select
               id="lecture-type"
-              name="lecture_type"
-              className="ui-input"
+              label="Lecture type"
               value={type}
               onChange={(event) => {
-                setType(event.target.value as 'video' | 'document');
+                if (event === 'video' || event === 'document') setType(event);
                 setFileError('');
               }}
-            >
-              <option value="video">Video</option>
-              <option value="document">Document</option>
-            </select>
-          </Field>
-          <Field label="Lecture status" htmlFor="lecture-status" required>
-            <select
-              id="lecture-status"
-              name="status"
-              className="ui-input"
-              defaultValue={record?.status ?? 'draft'}
-            >
-              <option value="draft">Draft</option>
-              <option value="published">Published</option>
-              <option value="rejected">Rejected</option>
-            </select>
+              options={[
+                { value: 'video', label: 'Video' },
+                { value: 'document', label: 'Document' },
+              ]}
+            />
           </Field>
         </div>
         <label className="flex items-center gap-3 text-sm">
@@ -174,36 +179,26 @@ export function LectureForm({
           Allow learners to preview this lecture
         </label>
         {type === 'video' ? (
-          <div
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={(event) => {
-              event.preventDefault();
-              if (!pending) chooseFile(event.dataTransfer.files[0]);
-            }}
-            className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-6 transition hover:border-violet-300"
+          <Field
+            label={record?.source ? 'Replace video (optional)' : 'Video'}
+            htmlFor="lecture-video"
+            required={!record?.source}
           >
-            <Field
-              label={record?.source ? 'Replace video (optional)' : 'Video'}
-              htmlFor="lecture-video"
-              required={!record?.source}
-            >
-              <p className="mb-3 text-sm text-slate-500">
-                Drag a video here or choose a file.
-              </p>
-              <Input
-                id="lecture-video"
-                name="source"
-                type="file"
-                accept="video/*"
-                onChange={(event) => chooseFile(event.target.files?.[0])}
-              />
-            </Field>
-            {file && (
-              <p className="mt-3 break-all text-sm text-violet-700">
-                {file.name}
-              </p>
-            )}
-          </div>
+            <FileUpload
+              id="lecture-video"
+              name="source"
+              accept="video/*"
+              actionLabel="Choose video"
+              emptyLabel="No video selected"
+              hint="Video files"
+              currentFileLabel={
+                record?.source ? 'Current video uploaded' : undefined
+              }
+              file={file}
+              onChange={chooseFile}
+              disabled={pending}
+            />
+          </Field>
         ) : (
           <Field
             label={
@@ -218,23 +213,33 @@ export function LectureForm({
               id="lecture-content"
               name="document_content"
               required={record?.lecture_type !== 'document'}
+              defaultValue={record?.document_content ?? ''}
             />
           </Field>
         )}
+        <Field label="Thumbnail (optional)" htmlFor="lecture-thumbnail">
+          <FileUpload
+            id="lecture-thumbnail"
+            name="thumbnail"
+            accept="image/*"
+            actionLabel="Choose thumbnail"
+            emptyLabel="No thumbnail selected"
+            hint="Image files"
+            currentFileLabel={
+              record?.thumbnail ? 'Current thumbnail uploaded' : undefined
+            }
+            file={thumbnail}
+            onChange={chooseThumbnail}
+            disabled={pending}
+          />
+        </Field>
         {(error || fileError) && (
           <p role="alert" className="text-sm text-red-700">
             {error || fileError}
           </p>
         )}
         <div>
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={!saveEnabled}
-            title={
-              !saveEnabled ? 'Lecture saving is not available yet' : undefined
-            }
-          >
+          <Button type="submit" variant="primary" disabled={pending}>
             {pending ? 'Saving…' : record ? 'Save changes' : 'Create lecture'}
           </Button>
         </div>

@@ -3,6 +3,7 @@ import {
   DndContext,
   PointerSensor,
   KeyboardSensor,
+  type KeyboardCoordinateGetter,
   closestCenter,
   useSensor,
   useSensors,
@@ -15,6 +16,25 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+
+const createKeyboardCoordinates =
+  (items: { id: string }[]): KeyboardCoordinateGetter =>
+  (event, args) => {
+    if (event.code !== 'ArrowDown' && event.code !== 'ArrowUp') {
+      return sortableKeyboardCoordinates(event, args);
+    }
+
+    const { active, context } = args;
+    const currentId = context.over?.id ?? active;
+    const currentIndex = items.findIndex((item) => item.id === currentId);
+    if (currentIndex < 0) return;
+    const direction = event.code === 'ArrowDown' ? 1 : -1;
+    const target = items[currentIndex + direction];
+    const rect = target && context.droppableRects.get(target.id);
+    if (!rect) return;
+
+    return { x: rect.left, y: rect.top };
+  };
 
 function Card({
   id,
@@ -74,7 +94,8 @@ export function SortableCards<T extends { id: string; title: string }>({
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
+      coordinateGetter: createKeyboardCoordinates(items),
+      scrollBehavior: 'auto',
     }),
   );
   return (

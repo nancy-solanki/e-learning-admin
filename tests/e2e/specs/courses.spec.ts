@@ -43,6 +43,26 @@ test('instructors see the create tile beside their own courses', async ({
   await expect(page.getByRole('button', { name: /^Filters/ })).toHaveCount(0);
 });
 
+test('instructors submit a saved course for approval', async ({ page }) => {
+  await session(page, {
+    id: 'instructor-1',
+    username: 'ada',
+    role: ['instructor'],
+  });
+  const state = await mockCourses(page);
+  await page.goto('/courses');
+  const course = page.locator('article').filter({ hasText: 'Course 01' });
+  await course.getByRole('button', { name: 'Submit for approval' }).click();
+  await expect(course.getByText('In review', { exact: true })).toBeVisible();
+  await expect(course).toContainText(
+    'Course submitted for review. It will be published once an admin approves it.',
+  );
+  await expect(
+    course.getByRole('button', { name: 'Submit for approval' }),
+  ).toHaveCount(0);
+  expect(state.submissions).toEqual(['course-1']);
+});
+
 test('course card actions do not overlap at narrow viewport widths', async ({
   page,
 }) => {

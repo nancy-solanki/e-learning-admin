@@ -33,6 +33,8 @@ export const ENDPOINTS = {
     DETAIL: (slug: string) => `/api/v1/course/${encodeURIComponent(slug)}/`,
     ADMIN_DETAIL: (id: string) =>
       `/api/v1/course/instructor/all/${encodeURIComponent(id)}/`,
+    SUBMIT: (id: string) =>
+      `/api/v1/course/instructor/all/${encodeURIComponent(id)}/submit/`,
     CATEGORY_COURSES: (slug: string) =>
       `/api/v1/course/category/${encodeURIComponent(slug)}/`,
   },
@@ -40,11 +42,15 @@ export const ENDPOINTS = {
     ADMIN_LIST: '/api/v1/section/instructor/all/',
     ADMIN_DETAIL: (id: string) =>
       `/api/v1/section/instructor/all/${encodeURIComponent(id)}/`,
+    SUBMIT: (id: string) =>
+      `/api/v1/section/instructor/all/${encodeURIComponent(id)}/submit/`,
   },
   LECTURE: {
     ADMIN_LIST: '/api/v1/lecture/instructor/all/',
     ADMIN_DETAIL: (id: string) =>
       `/api/v1/lecture/instructor/all/${encodeURIComponent(id)}/`,
+    SUBMIT: (id: string) =>
+      `/api/v1/lecture/instructor/all/${encodeURIComponent(id)}/submit/`,
   },
   CATEGORY: {
     LIST: '/api/v1/category/',

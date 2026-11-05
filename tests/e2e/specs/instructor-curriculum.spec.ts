@@ -166,6 +166,7 @@ test('section keyboard reordering persists only after Save and survives reload',
   const handle = page.getByRole('button', { name: 'Reorder Getting started' });
   await handle.focus();
   await handle.press('Space');
+  await expect(handle).toHaveAttribute('aria-pressed', 'true');
   await handle.press('ArrowDown');
   await handle.press('ArrowDown');
   await handle.press('ArrowUp');

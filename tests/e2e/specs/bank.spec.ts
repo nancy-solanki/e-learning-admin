@@ -89,6 +89,11 @@ test('changes default before deletion, supports cancellation and retries failed 
   await expect(
     second.getByRole('button', { name: 'Delete', exact: true }),
   ).toBeDisabled();
+  await expect(
+    page.getByRole('status').filter({
+      hasText: 'Default bank account updated.',
+    }),
+  ).toBeVisible();
   expect(state.requests.find((r) => r.method === 'PATCH')?.body).toEqual({
     default: true,
   });

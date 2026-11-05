@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
+import { useRef } from 'react';
 import {
   DndContext,
   PointerSensor,
   KeyboardSensor,
-  type KeyboardCoordinateGetter,
   closestCenter,
   useSensor,
   useSensors,
@@ -16,25 +16,6 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-
-const createKeyboardCoordinates =
-  (items: { id: string }[]): KeyboardCoordinateGetter =>
-  (event, args) => {
-    if (event.code !== 'ArrowDown' && event.code !== 'ArrowUp') {
-      return sortableKeyboardCoordinates(event, args);
-    }
-
-    const { active, context } = args;
-    const currentId = context.over?.id ?? active;
-    const currentIndex = items.findIndex((item) => item.id === currentId);
-    if (currentIndex < 0) return;
-    const direction = event.code === 'ArrowDown' ? 1 : -1;
-    const target = items[currentIndex + direction];
-    const rect = target && context.droppableRects.get(target.id);
-    if (!rect) return;
-
-    return { x: rect.left, y: rect.top };
-  };
 
 function Card({
   id,
@@ -91,10 +72,31 @@ export function SortableCards<T extends { id: string; title: string }>({
   renderItem: (item: T, index: number) => ReactNode;
   label: string;
 }) {
+  const keyboardTargetIndex = useRef<number | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, {
-      coordinateGetter: createKeyboardCoordinates(items),
+      coordinateGetter: (event, args) => {
+        if (event.code !== 'ArrowDown' && event.code !== 'ArrowUp') {
+          return sortableKeyboardCoordinates(event, args);
+        }
+
+        const { active, context } = args;
+        const activeIndex = items.findIndex((item) => item.id === active);
+        if (activeIndex < 0) return;
+        const currentIndex = keyboardTargetIndex.current ?? activeIndex;
+        const direction = event.code === 'ArrowDown' ? 1 : -1;
+        const targetIndex = Math.max(
+          0,
+          Math.min(items.length - 1, currentIndex + direction),
+        );
+        keyboardTargetIndex.current = targetIndex;
+        const target = items[targetIndex];
+        const rect = target && context.droppableRects.get(target.id);
+        if (!rect) return;
+
+        return { x: rect.left, y: rect.top };
+      },
       scrollBehavior: 'auto',
     }),
   );
@@ -102,12 +104,23 @@ export function SortableCards<T extends { id: string; title: string }>({
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
+      onDragStart={() => {
+        keyboardTargetIndex.current = null;
+      }}
+      onDragCancel={() => {
+        keyboardTargetIndex.current = null;
+      }}
       onDragEnd={({ active, over }) => {
-        if (!disabled && over && active.id !== over.id) {
-          const from = items.findIndex((item) => item.id === active.id);
-          const to = items.findIndex((item) => item.id === over.id);
-          if (from >= 0 && to >= 0) onReorder(arrayMove(items, from, to));
-        }
+        const keyboardTarget = keyboardTargetIndex.current;
+        keyboardTargetIndex.current = null;
+        if (disabled) return;
+
+        const from = items.findIndex((item) => item.id === active.id);
+        const to =
+          keyboardTarget ??
+          (over ? items.findIndex((item) => item.id === over.id) : -1);
+        if (from >= 0 && to >= 0 && from !== to)
+          onReorder(arrayMove(items, from, to));
       }}
     >
       <SortableContext items={items} strategy={verticalListSortingStrategy}>

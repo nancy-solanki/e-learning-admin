@@ -4,10 +4,7 @@ import { Field, Input, Textarea } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { FileUpload } from '../ui/FileUpload';
 import type { AdminSection } from '../../api/services/sections';
-import type {
-  AdminLecture,
-  LectureType,
-} from '../../api/services/lectures';
+import type { AdminLecture, LectureType } from '../../api/services/lectures';
 
 export function SectionForm({
   record,

@@ -359,6 +359,66 @@ test('instructors create document lectures as JSON and can soft-delete them', as
   });
 });
 
+test('section form blocks whitespace-only titles and descriptions', async ({
+  page,
+}) => {
+  await setup(page);
+  await page.getByRole('button', { name: '+ New section' }).click();
+
+  const title = page.getByRole('textbox', { name: 'Title', exact: true });
+  const description = page.getByRole('textbox', {
+    name: 'Description',
+    exact: true,
+  });
+  const submit = page.getByRole('button', { name: 'Create section' });
+
+  await title.fill('   ');
+  await description.fill('A valid description.');
+  await expect(submit).toBeDisabled();
+
+  await title.fill('A valid title.');
+  await description.fill('   ');
+  await expect(submit).toBeDisabled();
+});
+
+test('lecture form validates video files and required document content', async ({
+  page,
+}) => {
+  const { lectureWrites } = await setup(page);
+  await page.getByLabel('Actions for Getting started').click();
+  await page
+    .getByRole('button', { name: 'Manage lectures', exact: true })
+    .click();
+  await page.getByRole('button', { name: '+ New lecture' }).click();
+  await page.getByLabel('Lecture title').fill('Course introduction');
+  await page.getByLabel('Description').fill('Start here');
+
+  await page.getByRole('button', { name: 'Create lecture' }).click();
+  await expect(page.getByRole('alert')).toHaveText(
+    'Choose a video to continue.',
+  );
+  expect(lectureWrites).toHaveLength(0);
+
+  await page.locator('#lecture-video').setInputFiles({
+    name: 'thumbnail.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from('image'),
+  });
+  await expect(page.getByRole('alert')).toHaveText('Choose a video file.');
+  expect(lectureWrites).toHaveLength(0);
+
+  await page.getByLabel('Lecture type').click();
+  await page.getByRole('option', { name: 'Document' }).click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(page.getByLabel('Document content')).toHaveAttribute(
+    'required',
+    '',
+  );
+  await page.getByRole('button', { name: 'Create lecture' }).click();
+  expect(lectureWrites).toHaveLength(0);
+  await expect(page.getByLabel('Document content')).toBeVisible();
+});
+
 test('video and thumbnail inputs use the shared file selection control', async ({
   page,
 }) => {

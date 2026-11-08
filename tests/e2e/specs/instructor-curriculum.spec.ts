@@ -18,7 +18,7 @@ async function setup(page: import('@playwright/test').Page) {
       instructor: 'ada',
       course_title: 'Course 01',
       order: index + 1,
-      status: 'draft',
+      status: index === 1 ? 'published' : 'draft',
       deleted_at: null as string | null,
     }),
   );
@@ -76,9 +76,9 @@ async function setup(page: import('@playwright/test').Page) {
     section: 'section-1',
     course: 'course-1',
     order: index,
-    lecture_type: 'video',
+    lecture_type: index === 2 ? 'document' : 'video',
     status: 'draft',
-    is_preview: false,
+    is_preview: index === 2,
     document_content: null,
     source: '/video.mp4',
     thumbnail: null,
@@ -157,6 +157,56 @@ async function setup(page: import('@playwright/test').Page) {
   await page.goto('/courses/course-1/curriculum');
   return { writes, lectureWrites, sectionSubmissions, sectionDeletes };
 }
+
+test('sections and lectures can be filtered from their drawers', async ({
+  page,
+}) => {
+  await setup(page);
+  await page.getByRole('button', { name: 'Filter sections' }).click();
+  await page
+    .getByRole('dialog', { name: 'Filter sections' })
+    .getByRole('button', { name: 'Filter sections by status' })
+    .click();
+  await page.getByRole('option', { name: 'Published' }).click();
+  await page.getByRole('button', { name: 'Apply filters' }).click();
+
+  const sections = page.getByRole('list', { name: 'Course sections' });
+  await expect(sections.getByRole('listitem')).toHaveCount(1);
+  await expect(
+    sections.getByRole('heading', { name: 'Core concepts' }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('1 of 3 sections', { exact: true }),
+  ).toBeVisible();
+
+  await page.getByRole('button', { name: 'Clear filters' }).click();
+  await page.getByLabel('Actions for Getting started').click();
+  await page
+    .getByRole('button', { name: 'Manage lectures', exact: true })
+    .click();
+  const lectureDialog = page.getByRole('dialog', { name: 'Manage lectures' });
+  await lectureDialog.getByRole('button', { name: 'Filter lectures' }).click();
+  const filters = page.getByRole('dialog', { name: 'Filter lectures' });
+  await filters
+    .getByRole('button', { name: 'Filter lectures by type' })
+    .click();
+  await page.getByRole('option', { name: 'Document' }).click();
+  await filters
+    .getByRole('button', { name: 'Filter preview lectures' })
+    .click();
+  await page.getByRole('option', { name: 'Preview', exact: true }).click();
+  await filters.getByRole('button', { name: 'Apply filters' }).click();
+
+  const lectures = lectureDialog.getByRole('list', {
+    name: 'Section lectures',
+  });
+  await expect(lectures.getByRole('listitem')).toHaveCount(1);
+  await expect(
+    lectures.getByRole('heading', { name: 'Lecture 2' }),
+  ).toBeVisible();
+  await lectureDialog.getByRole('button', { name: 'Clear filters' }).click();
+  await expect(lectures.getByRole('listitem')).toHaveCount(2);
+});
 
 test('section keyboard reordering persists only after Save and survives reload', async ({
   page,

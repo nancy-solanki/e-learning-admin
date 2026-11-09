@@ -208,6 +208,79 @@ test('sections and lectures can be filtered from their drawers', async ({
   await expect(lectures.getByRole('listitem')).toHaveCount(2);
 });
 
+test('section filters search, cancel drafts, reset, and show empty results', async ({
+  page,
+}) => {
+  await setup(page);
+  const sections = page.getByRole('list', { name: 'Course sections' });
+  const openFilters = () =>
+    page.getByRole('button', { name: 'Filter sections' }).click();
+
+  await openFilters();
+  let drawer = page.getByRole('dialog', { name: 'Filter sections' });
+  await drawer
+    .getByRole('textbox', { name: 'Search sections' })
+    .fill('  Hands-on  ');
+  await drawer
+    .getByRole('button', { name: 'Filter sections by status' })
+    .click();
+  await page.getByRole('option', { name: 'Draft' }).click();
+  await drawer.getByRole('button', { name: 'Apply filters' }).click();
+
+  await expect(sections.getByRole('listitem')).toHaveCount(1);
+  await expect(
+    sections.getByRole('heading', { name: 'Hands-on project' }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('1 of 3 sections', { exact: true }),
+  ).toBeVisible();
+
+  await openFilters();
+  drawer = page.getByRole('dialog', { name: 'Filter sections' });
+  await drawer
+    .getByRole('textbox', { name: 'Search sections' })
+    .fill('Core concepts');
+  await drawer
+    .getByRole('button', { name: 'Filter sections by status' })
+    .click();
+  await page.getByRole('option', { name: 'Published' }).click();
+  await drawer.getByRole('button', { name: 'Close drawer' }).click();
+
+  await expect(sections.getByRole('listitem')).toHaveCount(1);
+  await openFilters();
+  drawer = page.getByRole('dialog', { name: 'Filter sections' });
+  await expect(
+    drawer.getByRole('textbox', { name: 'Search sections' }),
+  ).toHaveValue('Hands-on');
+  await expect(
+    drawer.getByRole('button', { name: 'Filter sections by status' }),
+  ).toContainText('Draft');
+  await drawer.getByRole('button', { name: 'Reset filters' }).click();
+  await expect(
+    drawer.getByRole('textbox', { name: 'Search sections' }),
+  ).toHaveValue('');
+  await expect(
+    drawer.getByRole('button', { name: 'Filter sections by status' }),
+  ).toContainText('All statuses');
+  await drawer.getByRole('button', { name: 'Apply filters' }).click();
+  await expect(sections.getByRole('listitem')).toHaveCount(3);
+
+  await openFilters();
+  drawer = page.getByRole('dialog', { name: 'Filter sections' });
+  await drawer
+    .getByRole('textbox', { name: 'Search sections' })
+    .fill('missing section');
+  await drawer.getByRole('button', { name: 'Apply filters' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'No sections match these filters' }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('0 of 3 sections', { exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Clear filters' }).click();
+  await expect(sections.getByRole('listitem')).toHaveCount(3);
+});
+
 test('section keyboard reordering persists only after Save and survives reload', async ({
   page,
 }) => {

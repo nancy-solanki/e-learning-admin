@@ -261,17 +261,14 @@ function Curriculum({ courseId }: { courseId: string }) {
             section: managedSection?.id,
             page,
             ordering: 'order',
-            ...(lectureFilters.search
-              ? { search: lectureFilters.search }
-              : {}),
+            ...(lectureFilters.search ? { search: lectureFilters.search } : {}),
             ...(lectureFilters.status
               ? { status: lectureFilters.status as LectureStatus }
               : {}),
             ...(lectureFilters.lecture_type
               ? {
                   lecture_type: lectureFilters.lecture_type as
-                    | 'video'
-                    | 'document',
+                    'video' | 'document',
                 }
               : {}),
             ...(preview !== undefined ? { is_preview: preview } : {}),
@@ -296,8 +293,8 @@ function Curriculum({ courseId }: { courseId: string }) {
     ),
     lectureIds,
   );
-  const lectureFilterActive = Object.values(lectureFilters).some(
-    (value) => Boolean(value.trim()),
+  const lectureFilterActive = Object.values(lectureFilters).some((value) =>
+    Boolean(value.trim()),
   );
   const lectureRows = allLectureRows.filter((item) => !item.deleted_at);
   const deletedLectureRows = (lectures.data ?? [])

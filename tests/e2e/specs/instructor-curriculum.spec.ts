@@ -129,7 +129,9 @@ async function setup(page: import('@playwright/test').Page) {
       const filteredRecords = lectureRecords.filter(
         (item) =>
           (!search ||
-            `${item.title} ${item.description}`.toLowerCase().includes(search)) &&
+            `${item.title} ${item.description}`
+              .toLowerCase()
+              .includes(search)) &&
           (!status || item.status === status) &&
           (!lectureType || item.lecture_type === lectureType) &&
           (isPreview === null || item.is_preview === (isPreview === 'true')),
@@ -201,9 +203,7 @@ test('section and lecture filters are sent to the backend', async ({
   await expect(
     sections.getByRole('heading', { name: 'Core concepts' }),
   ).toBeVisible();
-  await expect(
-    page.getByText('1 section', { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText('1 section', { exact: true })).toBeVisible();
   await expect
     .poll(() =>
       sectionListRequests.some(
@@ -220,13 +220,9 @@ test('section and lecture filters are sent to the backend', async ({
   const lectureDialog = page.getByRole('dialog', { name: 'Manage lectures' });
   await lectureDialog.getByRole('button', { name: 'Filters' }).click();
   const filters = page.getByRole('dialog', { name: 'Filters' }).last();
-  await filters
-    .getByRole('button', { name: 'Filter by lecture type' })
-    .click();
+  await filters.getByRole('button', { name: 'Filter by lecture type' }).click();
   await page.getByRole('option', { name: 'Document' }).click();
-  await filters
-    .getByRole('button', { name: 'Filter by preview' })
-    .click();
+  await filters.getByRole('button', { name: 'Filter by preview' }).click();
   await page.getByRole('option', { name: 'Preview', exact: true }).click();
   await filters.getByRole('button', { name: 'Apply filters' }).click();
 
@@ -259,9 +255,7 @@ test('section filters search, cancel drafts, reset, and show empty results', asy
   await expect(
     sections.getByRole('heading', { name: 'Hands-on project' }),
   ).toBeVisible();
-  await expect(
-    page.getByText('1 section', { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText('1 section', { exact: true })).toBeVisible();
   await expect
     .poll(() =>
       sectionListRequests.some(
@@ -297,9 +291,7 @@ test('section filters search, cancel drafts, reset, and show empty results', asy
   await expect(
     page.getByRole('heading', { name: 'No sections match these filters' }),
   ).toBeVisible();
-  await expect(
-    page.getByText('0 sections', { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText('0 sections', { exact: true })).toBeVisible();
   await expect
     .poll(() =>
       sectionListRequests.some(

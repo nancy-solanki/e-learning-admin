@@ -100,7 +100,7 @@ function CurriculumFiltersDrawer({
   };
   return (
     <Drawer
-      title={`Filter ${kind}`}
+      title="Filters"
       description="Choose filters to narrow the list."
       onClose={onClose}
       footer={
@@ -194,7 +194,7 @@ function CurriculumFiltersDrawer({
             <Field label="Preview" htmlFor="curriculum-filter-preview">
               <Select
                 id="curriculum-filter-preview"
-                label="Filter preview lectures"
+                label="Filter by preview"
                 value={draft.is_preview ?? ''}
                 onChange={(value) => update('is_preview', value)}
                 options={[
@@ -583,7 +583,7 @@ export default function CurriculumPage({
         )}
       </div>
       <StatusFilterTabs
-        label={`Filter ${kind} by status`}
+        label="Filter by status"
         value={status ?? ''}
         options={statusOptions(statusValues)}
         onChange={(value) => updateFilter('status', value)}

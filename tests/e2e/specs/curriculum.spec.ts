@@ -174,7 +174,7 @@ for (const kind of ['section', 'lecture'] as const) {
     await page.goto(`/${plural}?page=2`);
     await expect(page.locator('article')).toHaveCount(1);
     await page.getByRole('button', { name: /^Filters/ }).click();
-    const drawer = page.getByRole('dialog', { name: `Filter ${plural}` });
+    const drawer = page.getByRole('dialog', { name: 'Filters' });
     await controls.choose('Filter by course', 'Python Basics', drawer);
     await drawer.getByRole('button', { name: 'Close drawer' }).click();
     await page.getByRole('button', { name: /^Filters/ }).click();
@@ -197,7 +197,7 @@ for (const kind of ['section', 'lecture'] as const) {
     if (kind === 'lecture') {
       await controls.choose('Filter by section', 'Introduction', drawer);
       await controls.choose('Filter by lecture type', 'Video', drawer);
-      await controls.choose('Filter preview lectures', 'No', drawer);
+      await controls.choose('Filter by preview', 'No', drawer);
     }
     await drawer.getByRole('button', { name: 'Apply filters' }).click();
     await expect(page.locator('article')).toHaveCount(20);
@@ -219,7 +219,7 @@ for (const kind of ['section', 'lecture'] as const) {
         : {}),
     });
     await page
-      .getByRole('group', { name: `Filter ${plural} by status` })
+      .getByRole('group', { name: 'Filter by status' })
       .getByRole('button', { name: 'Draft', exact: true })
       .click();
     await expect(page.locator('article')).toHaveCount(0);

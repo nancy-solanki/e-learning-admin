@@ -25,6 +25,7 @@ async function setup(page: import('@playwright/test').Page) {
   const writes: { id: string; body: Record<string, unknown> }[] = [];
   const sectionSubmissions: string[] = [];
   const sectionDeletes: string[] = [];
+  const sectionListRequests: URLSearchParams[] = [];
   await page.route('**/api/v1/section/instructor/all/**', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -60,12 +61,21 @@ async function setup(page: import('@playwright/test').Page) {
       return route.fulfill({ json: record });
     }
     expect(url.searchParams.get('course')).toBe('course-1');
+    sectionListRequests.push(new URLSearchParams(url.searchParams));
+    const search = url.searchParams.get('search')?.toLowerCase() ?? '';
+    const status = url.searchParams.get('status');
+    const filteredRecords = records.filter(
+      (item) =>
+        (!search ||
+          `${item.title} ${item.description}`.toLowerCase().includes(search)) &&
+        (!status || item.status === status),
+    );
     return route.fulfill({
       json: {
-        count: records.length,
+        count: filteredRecords.length,
         next: null,
         previous: null,
-        results: [...records].sort((a, b) => a.order - b.order),
+        results: [...filteredRecords].sort((a, b) => a.order - b.order),
       },
     });
   });
@@ -90,6 +100,7 @@ async function setup(page: import('@playwright/test').Page) {
     id?: string;
     body?: Record<string, unknown>;
   }[] = [];
+  const lectureListRequests: URLSearchParams[] = [];
   await page.route('**/api/v1/lecture/instructor/all/**', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -110,12 +121,25 @@ async function setup(page: import('@playwright/test').Page) {
     if (request.method() === 'GET' && url.pathname.endsWith('/all/')) {
       expect(url.searchParams.get('course')).toBe('course-1');
       expect(url.searchParams.get('section')).toBe('section-1');
+      lectureListRequests.push(new URLSearchParams(url.searchParams));
+      const search = url.searchParams.get('search')?.toLowerCase() ?? '';
+      const status = url.searchParams.get('status');
+      const lectureType = url.searchParams.get('lecture_type');
+      const isPreview = url.searchParams.get('is_preview');
+      const filteredRecords = lectureRecords.filter(
+        (item) =>
+          (!search ||
+            `${item.title} ${item.description}`.toLowerCase().includes(search)) &&
+          (!status || item.status === status) &&
+          (!lectureType || item.lecture_type === lectureType) &&
+          (isPreview === null || item.is_preview === (isPreview === 'true')),
+      );
       return route.fulfill({
         json: {
-          count: lectureRecords.length,
+          count: filteredRecords.length,
           next: null,
           previous: null,
-          results: [...lectureRecords].sort((a, b) => a.order - b.order),
+          results: [...filteredRecords].sort((a, b) => a.order - b.order),
         },
       });
     }
@@ -155,20 +179,22 @@ async function setup(page: import('@playwright/test').Page) {
     });
   });
   await page.goto('/courses/course-1/curriculum');
-  return { writes, lectureWrites, sectionSubmissions, sectionDeletes };
+  return {
+    writes,
+    lectureWrites,
+    sectionSubmissions,
+    sectionDeletes,
+    sectionListRequests,
+    lectureListRequests,
+  };
 }
 
-test('sections and lectures can be filtered from their drawers', async ({
+test('section and lecture filters are sent to the backend', async ({
   page,
 }) => {
-  await setup(page);
-  await page.getByRole('button', { name: 'Filter sections' }).click();
-  await page
-    .getByRole('dialog', { name: 'Filter sections' })
-    .getByRole('button', { name: 'Filter sections by status' })
-    .click();
+  const { sectionListRequests, lectureListRequests } = await setup(page);
+  await page.getByRole('button', { name: 'Filter by status' }).click();
   await page.getByRole('option', { name: 'Published' }).click();
-  await page.getByRole('button', { name: 'Apply filters' }).click();
 
   const sections = page.getByRole('list', { name: 'Course sections' });
   await expect(sections.getByRole('listitem')).toHaveCount(1);
@@ -176,8 +202,15 @@ test('sections and lectures can be filtered from their drawers', async ({
     sections.getByRole('heading', { name: 'Core concepts' }),
   ).toBeVisible();
   await expect(
-    page.getByText('1 of 3 sections', { exact: true }),
+    page.getByText('1 section', { exact: true }),
   ).toBeVisible();
+  await expect
+    .poll(() =>
+      sectionListRequests.some(
+        (params) => params.get('status') === 'published',
+      ),
+    )
+    .toBe(true);
 
   await page.getByRole('button', { name: 'Clear filters' }).click();
   await page.getByLabel('Actions for Getting started').click();
@@ -185,14 +218,14 @@ test('sections and lectures can be filtered from their drawers', async ({
     .getByRole('button', { name: 'Manage lectures', exact: true })
     .click();
   const lectureDialog = page.getByRole('dialog', { name: 'Manage lectures' });
-  await lectureDialog.getByRole('button', { name: 'Filter lectures' }).click();
-  const filters = page.getByRole('dialog', { name: 'Filter lectures' });
+  await lectureDialog.getByRole('button', { name: 'Filters' }).click();
+  const filters = page.getByRole('dialog', { name: 'Filters' }).last();
   await filters
-    .getByRole('button', { name: 'Filter lectures by type' })
+    .getByRole('button', { name: 'Filter by lecture type' })
     .click();
   await page.getByRole('option', { name: 'Document' }).click();
   await filters
-    .getByRole('button', { name: 'Filter preview lectures' })
+    .getByRole('button', { name: 'Filter by preview' })
     .click();
   await page.getByRole('option', { name: 'Preview', exact: true }).click();
   await filters.getByRole('button', { name: 'Apply filters' }).click();
@@ -204,6 +237,8 @@ test('sections and lectures can be filtered from their drawers', async ({
   await expect(
     lectures.getByRole('heading', { name: 'Lecture 2' }),
   ).toBeVisible();
+  expect(lectureListRequests.at(-1)?.get('lecture_type')).toBe('document');
+  expect(lectureListRequests.at(-1)?.get('is_preview')).toBe('true');
   await lectureDialog.getByRole('button', { name: 'Clear filters' }).click();
   await expect(lectures.getByRole('listitem')).toHaveCount(2);
 });
@@ -211,72 +246,67 @@ test('sections and lectures can be filtered from their drawers', async ({
 test('section filters search, cancel drafts, reset, and show empty results', async ({
   page,
 }) => {
-  await setup(page);
+  const { sectionListRequests } = await setup(page);
   const sections = page.getByRole('list', { name: 'Course sections' });
-  const openFilters = () =>
-    page.getByRole('button', { name: 'Filter sections' }).click();
+  const search = page.getByRole('textbox', { name: 'Search sections' });
+  const statusButton = page.getByRole('button', { name: 'Filter by status' });
 
-  await openFilters();
-  let drawer = page.getByRole('dialog', { name: 'Filter sections' });
-  await drawer
-    .getByRole('textbox', { name: 'Search sections' })
-    .fill('  Hands-on  ');
-  await drawer
-    .getByRole('button', { name: 'Filter sections by status' })
-    .click();
+  await search.fill('  Hands-on  ');
+  await statusButton.click();
   await page.getByRole('option', { name: 'Draft' }).click();
-  await drawer.getByRole('button', { name: 'Apply filters' }).click();
 
   await expect(sections.getByRole('listitem')).toHaveCount(1);
   await expect(
     sections.getByRole('heading', { name: 'Hands-on project' }),
   ).toBeVisible();
   await expect(
-    page.getByText('1 of 3 sections', { exact: true }),
+    page.getByText('1 section', { exact: true }),
   ).toBeVisible();
+  await expect
+    .poll(() =>
+      sectionListRequests.some(
+        (params) =>
+          params.get('search') === 'Hands-on' &&
+          params.get('status') === 'draft',
+      ),
+    )
+    .toBe(true);
 
-  await openFilters();
-  drawer = page.getByRole('dialog', { name: 'Filter sections' });
-  await drawer
-    .getByRole('textbox', { name: 'Search sections' })
-    .fill('Core concepts');
-  await drawer
-    .getByRole('button', { name: 'Filter sections by status' })
-    .click();
+  await search.fill('Core concepts');
+  await statusButton.click();
   await page.getByRole('option', { name: 'Published' }).click();
-  await drawer.getByRole('button', { name: 'Close drawer' }).click();
-
   await expect(sections.getByRole('listitem')).toHaveCount(1);
-  await openFilters();
-  drawer = page.getByRole('dialog', { name: 'Filter sections' });
-  await expect(
-    drawer.getByRole('textbox', { name: 'Search sections' }),
-  ).toHaveValue('Hands-on');
-  await expect(
-    drawer.getByRole('button', { name: 'Filter sections by status' }),
-  ).toContainText('Draft');
-  await drawer.getByRole('button', { name: 'Reset filters' }).click();
-  await expect(
-    drawer.getByRole('textbox', { name: 'Search sections' }),
-  ).toHaveValue('');
-  await expect(
-    drawer.getByRole('button', { name: 'Filter sections by status' }),
-  ).toContainText('All statuses');
-  await drawer.getByRole('button', { name: 'Apply filters' }).click();
+  await expect
+    .poll(() =>
+      sectionListRequests.some(
+        (params) =>
+          params.get('search') === 'Core concepts' &&
+          params.get('status') === 'published',
+      ),
+    )
+    .toBe(true);
+
+  await expect(search).toHaveValue('Core concepts');
+  await expect(statusButton).toContainText('Published');
+  await page.getByRole('button', { name: 'Clear filters' }).click();
+  await expect(search).toHaveValue('');
+  await expect(statusButton).toContainText('All statuses');
   await expect(sections.getByRole('listitem')).toHaveCount(3);
 
-  await openFilters();
-  drawer = page.getByRole('dialog', { name: 'Filter sections' });
-  await drawer
-    .getByRole('textbox', { name: 'Search sections' })
-    .fill('missing section');
-  await drawer.getByRole('button', { name: 'Apply filters' }).click();
+  await search.fill('missing section');
   await expect(
     page.getByRole('heading', { name: 'No sections match these filters' }),
   ).toBeVisible();
   await expect(
-    page.getByText('0 of 3 sections', { exact: true }),
+    page.getByText('0 sections', { exact: true }),
   ).toBeVisible();
+  await expect
+    .poll(() =>
+      sectionListRequests.some(
+        (params) => params.get('search') === 'missing section',
+      ),
+    )
+    .toBe(true);
   await page.getByRole('button', { name: 'Clear filters' }).click();
   await expect(sections.getByRole('listitem')).toHaveCount(3);
 });

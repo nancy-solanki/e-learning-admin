@@ -3,9 +3,11 @@ import { Link, Navigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAccessState } from '../../state/access';
 import { getAdminCourse } from '../../api/services/courses';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import {
   listAdminLectures,
   type AdminLecture,
+  type LectureStatus,
 } from '../../api/services/lectures';
 import {
   listAdminSections,
@@ -14,6 +16,7 @@ import {
   deleteInstructorSection,
   submitInstructorSection,
   type AdminSection,
+  type SectionStatus,
 } from '../../api/services/sections';
 import { submitInstructorLecture } from '../../api/services/lectures';
 import {
@@ -79,7 +82,7 @@ function CurriculumFiltersDrawer({
   };
   return (
     <Drawer
-      title={`Filter ${kind}`}
+      title="Filters"
       description="Choose filters to narrow the list."
       onClose={onClose}
       footer={
@@ -114,7 +117,7 @@ function CurriculumFiltersDrawer({
         <Field label="Status" htmlFor="curriculum-filter-status">
           <Select
             id="curriculum-filter-status"
-            label={`Filter ${kind} by status`}
+            label="Filter by status"
             value={draft.status}
             onChange={(value) => update('status', value)}
             options={[
@@ -131,7 +134,7 @@ function CurriculumFiltersDrawer({
             <Field label="Lecture type" htmlFor="curriculum-filter-type">
               <Select
                 id="curriculum-filter-type"
-                label="Filter lectures by type"
+                label="Filter by lecture type"
                 value={draft.lecture_type}
                 onChange={(value) => update('lecture_type', value)}
                 options={[
@@ -144,7 +147,7 @@ function CurriculumFiltersDrawer({
             <Field label="Preview" htmlFor="curriculum-filter-preview">
               <Select
                 id="curriculum-filter-preview"
-                label="Filter preview lectures"
+                label="Filter by preview"
                 value={draft.is_preview}
                 onChange={(value) => update('is_preview', value)}
                 options={[
@@ -199,6 +202,7 @@ function Curriculum({ courseId }: { courseId: string }) {
   >(null);
   const [sectionFilters, setSectionFilters] = useState(emptyCurriculumFilters);
   const [lectureFilters, setLectureFilters] = useState(emptyCurriculumFilters);
+  const sectionSearch = useDebouncedValue(sectionFilters.search.trim());
   const [restoreMode, setRestoreMode] = useState(false);
   const [notice, setNotice] = useState('');
   const sectionKey = ['course-curriculum-sections', courseId];
@@ -213,13 +217,21 @@ function Curriculum({ courseId }: { courseId: string }) {
     enabled: access.isInstructor,
   });
   const sections = useQuery({
-    queryKey: sectionKey,
+    queryKey: [...sectionKey, sectionSearch, sectionFilters.status],
     enabled: access.isInstructor && course.isSuccess,
     queryFn: async ({ signal }) => {
       const records: AdminSection[] = [];
       for (let page = 1; ; page++) {
         const result = await listAdminSections(
-          { course: courseId, page, ordering: 'order' },
+          {
+            course: courseId,
+            page,
+            ordering: 'order',
+            ...(sectionSearch ? { search: sectionSearch } : {}),
+            ...(sectionFilters.status
+              ? { status: sectionFilters.status as SectionStatus }
+              : {}),
+          },
           signal,
         );
         records.push(...result.results);
@@ -228,10 +240,20 @@ function Curriculum({ courseId }: { courseId: string }) {
     },
   });
   const lectures = useQuery({
-    queryKey: lectureKey,
+    queryKey: [
+      ...lectureKey,
+      lectureFilters.search,
+      lectureFilters.status,
+      lectureFilters.lecture_type,
+      lectureFilters.is_preview,
+    ],
     enabled: access.isInstructor && !!managedSection,
     queryFn: async ({ signal }) => {
       const records: AdminLecture[] = [];
+      const preview =
+        lectureFilters.is_preview === ''
+          ? undefined
+          : lectureFilters.is_preview === 'true';
       for (let page = 1; ; page++) {
         const result = await listAdminLectures(
           {
@@ -239,6 +261,20 @@ function Curriculum({ courseId }: { courseId: string }) {
             section: managedSection?.id,
             page,
             ordering: 'order',
+            ...(lectureFilters.search
+              ? { search: lectureFilters.search }
+              : {}),
+            ...(lectureFilters.status
+              ? { status: lectureFilters.status as LectureStatus }
+              : {}),
+            ...(lectureFilters.lecture_type
+              ? {
+                  lecture_type: lectureFilters.lecture_type as
+                    | 'video'
+                    | 'document',
+                }
+              : {}),
+            ...(preview !== undefined ? { is_preview: preview } : {}),
           },
           signal,
         );
@@ -251,34 +287,19 @@ function Curriculum({ courseId }: { courseId: string }) {
     (sections.data ?? []).filter((item) => !item.deleted_at),
     sectionIds,
   );
-  const sectionFilterActive = Object.values(sectionFilters).some(Boolean);
-  const sectionRows = allSectionRows.filter((item) => {
-    const search = sectionFilters.search.toLowerCase();
-    return (
-      (!search ||
-        `${item.title} ${item.description}`.toLowerCase().includes(search)) &&
-      (!sectionFilters.status || item.status === sectionFilters.status)
-    );
-  });
+  const sectionFilterActive =
+    Boolean(sectionFilters.search.trim()) || Boolean(sectionFilters.status);
+  const sectionRows = allSectionRows;
   const allLectureRows = arrange(
     (lectures.data ?? []).filter(
       (item) => !item.deleted_at && item.section === managedSection?.id,
     ),
     lectureIds,
   );
-  const lectureFilterActive = Object.values(lectureFilters).some(Boolean);
-  const lectureRows = allLectureRows.filter((item) => {
-    const search = lectureFilters.search.toLowerCase();
-    return (
-      (!search ||
-        `${item.title} ${item.description}`.toLowerCase().includes(search)) &&
-      (!lectureFilters.status || item.status === lectureFilters.status) &&
-      (!lectureFilters.lecture_type ||
-        item.lecture_type === lectureFilters.lecture_type) &&
-      (lectureFilters.is_preview === '' ||
-        item.is_preview === (lectureFilters.is_preview === 'true'))
-    );
-  });
+  const lectureFilterActive = Object.values(lectureFilters).some(
+    (value) => Boolean(value.trim()),
+  );
+  const lectureRows = allLectureRows.filter((item) => !item.deleted_at);
   const deletedLectureRows = (lectures.data ?? [])
     .filter((item) => item.deleted_at && item.section === managedSection?.id)
     .sort((a, b) => a.order - b.order);
@@ -394,24 +415,14 @@ function Curriculum({ courseId }: { courseId: string }) {
   });
   const sectionSubmit = useMutation({
     mutationFn: (id: string) => submitInstructorSection(id),
-    onSuccess: async (result, id) => {
-      client.setQueryData<AdminSection[]>(sectionKey, (current) =>
-        current?.map((item) =>
-          item.id === id ? { ...item, status: result.status } : item,
-        ),
-      );
+    onSuccess: async (result) => {
       await refresh('sections');
       setNotice(result.message);
     },
   });
   const lectureSubmit = useMutation({
     mutationFn: (id: string) => submitInstructorLecture(id),
-    onSuccess: async (result, id) => {
-      client.setQueryData<AdminLecture[]>(lectureKey, (current) =>
-        current?.map((item) =>
-          item.id === id ? { ...item, status: result.status } : item,
-        ),
-      );
+    onSuccess: async (result) => {
       await refresh('lectures');
       setNotice(result.message);
     },
@@ -477,24 +488,6 @@ function Curriculum({ courseId }: { courseId: string }) {
         </div>
         <div className="flex gap-3">
           <Button
-            aria-haspopup="dialog"
-            aria-expanded={filtersOpen === 'sections'}
-            disabled={busy || !!sectionIds}
-            onClick={() => setFiltersOpen('sections')}
-          >
-            Filter sections
-            {sectionFilterActive && (
-              <span className="ml-2 rounded-full bg-violet-100 px-2 text-xs text-violet-700">
-                {Object.values(sectionFilters).filter(Boolean).length}
-              </span>
-            )}
-          </Button>
-          {sectionFilterActive && (
-            <Button onClick={() => setSectionFilters(emptyCurriculumFilters)}>
-              Clear filters
-            </Button>
-          )}
-          <Button
             variant="primary"
             onClick={() => {
               setNotice('');
@@ -508,7 +501,9 @@ function Curriculum({ courseId }: { courseId: string }) {
           </Button>
           <Button
             variant="primary"
-            disabled={busy || !!sectionIds || !sections.isSuccess}
+            disabled={
+              busy || !!sectionIds || sectionFilterActive || !sections.isSuccess
+            }
             onClick={() => {
               sectionSave.reset();
               setSectionEditor('new');
@@ -526,6 +521,54 @@ function Curriculum({ courseId }: { courseId: string }) {
           {notice}
         </p>
       )}
+      <div className="mb-4 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:flex-row sm:items-end">
+        <div className="flex-1">
+          <Field label="Search sections" htmlFor="curriculum-section-search">
+            <Input
+              id="curriculum-section-search"
+              aria-label="Search sections"
+              value={sectionFilters.search}
+              onChange={(event) =>
+                setSectionFilters((current) => ({
+                  ...current,
+                  search: event.target.value,
+                }))
+              }
+              placeholder="Search sections…"
+            />
+          </Field>
+        </div>
+        <div className="min-w-[180px]">
+          <Field label="Status" htmlFor="curriculum-section-status">
+            <Select
+              id="curriculum-section-status"
+              label="Filter by status"
+              value={sectionFilters.status}
+              onChange={(value) =>
+                setSectionFilters((current) => ({
+                  ...current,
+                  status: value,
+                }))
+              }
+              options={[
+                { value: '', label: 'All statuses' },
+                { value: 'published', label: 'Published' },
+                { value: 'in-review', label: 'In Review' },
+                { value: 'draft', label: 'Draft' },
+                { value: 'rejected', label: 'Rejected' },
+              ]}
+            />
+          </Field>
+        </div>
+        {sectionFilterActive && (
+          <Button
+            className="h-[46px] shrink-0"
+            onClick={() => setSectionFilters(emptyCurriculumFilters)}
+          >
+            Clear filters
+          </Button>
+        )}
+      </div>
       {orderSave.isError && orderSave.variables === 'sections' && (
         <p role="alert" className="mb-4 text-sm text-red-700">
           Some changes may have saved. Your requested order is retained; press
@@ -534,8 +577,9 @@ function Curriculum({ courseId }: { courseId: string }) {
       )}
       <div className="mb-3 flex items-center justify-between text-sm text-slate-500">
         <span>
-          {sectionRows.length}
-          {sectionFilterActive ? ` of ${allSectionRows.length}` : ''} sections
+          {sectionRows.length === 1
+            ? '1 section'
+            : `${sectionRows.length} sections`}
         </span>
         {sectionIds && (
           <span className="font-medium text-amber-700">Unsaved order</span>
@@ -651,17 +695,6 @@ function Curriculum({ courseId }: { courseId: string }) {
           )}
         />
       )}
-      {filtersOpen === 'sections' && (
-        <CurriculumFiltersDrawer
-          kind="sections"
-          values={sectionFilters}
-          onClose={() => setFiltersOpen(null)}
-          onApply={(values) => {
-            setSectionFilters(values);
-            setFiltersOpen(null);
-          }}
-        />
-      )}
       {sectionEditor && (
         <CurriculumDialog
           title={sectionEditor === 'new' ? 'Create section' : 'Edit section'}
@@ -717,9 +750,9 @@ function Curriculum({ courseId }: { courseId: string }) {
                 {managedSection.title}
               </p>
               <p className="mt-1 text-sm text-slate-500">
-                {lectureRows.length}
-                {lectureFilterActive ? ` of ${allLectureRows.length}` : ''}{' '}
-                lectures
+                {lectureRows.length === 1
+                  ? '1 lecture'
+                  : `${lectureRows.length} lectures`}
                 {lectureIds ? ' · Unsaved order' : ''}
               </p>
             </div>
@@ -730,7 +763,7 @@ function Curriculum({ courseId }: { courseId: string }) {
                 disabled={busy || !!lectureIds}
                 onClick={() => setFiltersOpen('lectures')}
               >
-                Filter lectures
+                Filters
                 {lectureFilterActive && (
                   <span className="ml-2 rounded-full bg-violet-100 px-2 text-xs text-violet-700">
                     {Object.values(lectureFilters).filter(Boolean).length}
@@ -756,7 +789,12 @@ function Curriculum({ courseId }: { courseId: string }) {
               </Button>
               <Button
                 variant="primary"
-                disabled={busy || !!lectureIds || !lectures.isSuccess}
+                disabled={
+                  busy ||
+                  !!lectureIds ||
+                  lectureFilterActive ||
+                  !lectures.isSuccess
+                }
                 onClick={() => {
                   lectureSave.reset();
                   setLectureEditor('new');

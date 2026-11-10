@@ -22,9 +22,8 @@ Then(
 Then(
   'the {word} filters are available in a drawer',
   async ({ page }, kind: string) => {
-    const plural = kind === 'section' ? 'sections' : 'lectures';
     await page.getByRole('button', { name: 'Filters' }).click();
-    const drawer = page.getByRole('dialog', { name: `Filter ${plural}` });
+    const drawer = page.getByRole('dialog', { name: 'Filters' });
     await expect(drawer).toBeVisible();
     await expect(
       drawer.getByRole('button', { name: 'Filter by course' }),
@@ -51,10 +50,8 @@ Then(
   },
 );
 
-Then('{word} status filters are available', async ({ page }, kind: string) => {
-  const group = page.getByRole('group', {
-    name: `Filter ${kind === 'section' ? 'sections' : 'lectures'} by status`,
-  });
+Then('{word} status filters are available', async ({ page }, _kind: string) => {
+  const group = page.getByRole('group', { name: 'Filter by status' });
   await expect(
     group.getByRole('button', { name: 'All statuses' }),
   ).toBeVisible();

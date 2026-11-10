@@ -50,7 +50,9 @@ Then(
   },
 );
 
-Then('{word} status filters are available', async ({ page }) => {
+Then('{word} status filters are available', async ({ page }, kind: string) => {
+  const heading = kind === 'section' ? 'Sections.' : 'Lectures.';
+  await expect(page.getByRole('heading', { name: heading })).toBeVisible();
   const group = page.getByRole('group', { name: 'Filter by status' });
   await expect(
     group.getByRole('button', { name: 'All statuses' }),

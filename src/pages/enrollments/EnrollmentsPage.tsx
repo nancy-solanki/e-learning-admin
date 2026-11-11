@@ -13,6 +13,8 @@ import { Select } from '../../components/ui/Select';
 import axios from 'axios';
 import { useQuery } from '@tanstack/react-query';
 import { useCurrentUser } from '../../state/profile';
+import { useAccessState } from '../../state/access';
+import { listCourseOptions } from '../../api/services/courses';
 import { getSessionVersion } from '../../state/session';
 import { apiErrorMessage } from '../../api/errors';
 import { Avatar } from '../../components/ui/Avatar';
@@ -145,6 +147,8 @@ export default function EnrollmentsPage() {
   return <EnrollmentReport key={`${profile.id}:${getSessionVersion()}`} />;
 }
 function EnrollmentReport() {
+  const { isInstructor } = useAccessState();
+  const profile = useCurrentUser();
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
   const [course, setCourse] = useState('');
@@ -193,8 +197,22 @@ function EnrollmentReport() {
     gcTime: 0,
   });
   const courses = useQuery({
-    queryKey: ['enrollments', 'courses'],
-    queryFn: ({ signal }) => guarded(() => enrollmentCourses(signal)),
+    queryKey: [
+      'enrollments',
+      'courses',
+      isInstructor ? profile.data?.id : 'enrolled',
+    ],
+    queryFn: ({ signal }) =>
+      guarded(async () => {
+        if (isInstructor) {
+          const options = await listCourseOptions(signal, true);
+          return options.map((course) => ({
+            id: course.id,
+            title: course.title,
+          }));
+        }
+        return enrollmentCourses(signal);
+      }),
     retry: false,
     enabled: !accessError,
     gcTime: 0,

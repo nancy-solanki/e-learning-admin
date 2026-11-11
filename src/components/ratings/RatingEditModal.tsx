@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { apiErrorMessage, apiFieldErrors } from '../../api/errors';
 import type { Rating, RatingUpdate } from '../../api/services/ratings';
 import { useRatingActions } from '../../state/ratings';
+import { useAccessState } from '../../state/access';
 import { CloseIcon } from '../icons/AdminIcons';
 import { Button } from '../ui/Button';
 import { Field, Textarea } from '../ui/Input';
@@ -17,6 +18,7 @@ export function RatingEditModal({
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const { updateRating } = useRatingActions();
+  const { isInstructor } = useAccessState();
   const [comment, setComment] = useState(rating.comment ?? '');
   const [response, setResponse] = useState(rating.response ?? '');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -39,10 +41,12 @@ export function RatingEditModal({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving) return;
-    const values: RatingUpdate = {
-      comment: comment.trim() || null,
-      response: response.trim() || null,
-    };
+    const values: RatingUpdate = isInstructor
+      ? { response: response.trim() || null }
+      : {
+          comment: comment.trim() || null,
+          response: response.trim() || null,
+        };
     setFieldErrors({});
     setSaving(true);
     setError('');
@@ -98,7 +102,7 @@ export function RatingEditModal({
               id="rating-edit-title"
               className="mt-1 font-display text-2xl font-bold"
             >
-              Edit rating
+              {isInstructor ? 'Reply to rating' : 'Edit rating'}
             </h2>
             <p className="mt-1 text-sm text-slate-500">
               {rating.course_title || 'Course review'} · {reviewer} · Rating{' '}
@@ -119,20 +123,22 @@ export function RatingEditModal({
           disabled={saving}
           className="ui-scroll-area grid gap-5 overflow-y-auto p-6 sm:p-8"
         >
-          <Field
-            label="Comment"
-            htmlFor="rating-edit-comment"
-            error={fieldErrors.comment}
-          >
-            <Textarea
-              id="rating-edit-comment"
-              aria-label="Rating comment"
-              value={comment}
-              onChange={(event) => setComment(event.target.value)}
-              aria-invalid={Boolean(fieldErrors.comment)}
-              autoFocus
-            />
-          </Field>
+          {!isInstructor && (
+            <Field
+              label="Comment"
+              htmlFor="rating-edit-comment"
+              error={fieldErrors.comment}
+            >
+              <Textarea
+                id="rating-edit-comment"
+                aria-label="Rating comment"
+                value={comment}
+                onChange={(event) => setComment(event.target.value)}
+                aria-invalid={Boolean(fieldErrors.comment)}
+                autoFocus
+              />
+            </Field>
+          )}
           <Field
             label="Instructor response"
             htmlFor="rating-edit-response"
@@ -160,7 +166,7 @@ export function RatingEditModal({
             Cancel
           </Button>
           <Button variant="primary" type="submit" disabled={saving}>
-            {saving ? 'Saving…' : 'Save changes'}
+            {saving ? 'Saving…' : isInstructor ? 'Save reply' : 'Save changes'}
           </Button>
         </footer>
       </form>

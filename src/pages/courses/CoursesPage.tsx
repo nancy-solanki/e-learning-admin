@@ -418,7 +418,7 @@ export default function CoursesPage() {
     queryFn: ({ signal, pageParam }) =>
       listAdminCourses(
         {
-          ...(admin ? filters : { ...filters, instructor: user?.id }),
+          ...(admin ? filters : { ...filters, instructor: undefined }),
           search: search || undefined,
           ordering: ordering || undefined,
           page: pageParam,

@@ -54,12 +54,18 @@ export type RatingUpdate = {
 export async function listRatings(
   filters: RatingFilters,
   signal?: AbortSignal,
+  audience: 'management' | 'instructor' = 'management',
 ): Promise<RatingPage> {
   return (
-    await api.get<RatingPage>(ENDPOINTS.RATING.MANAGEMENT, {
-      params: filters,
-      signal,
-    })
+    await api.get<RatingPage>(
+      audience === 'instructor'
+        ? ENDPOINTS.RATING.INSTRUCTOR_LIST
+        : ENDPOINTS.RATING.MANAGEMENT,
+      {
+        params: filters,
+        signal,
+      },
+    )
   ).data;
 }
 

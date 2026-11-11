@@ -22,6 +22,7 @@ import {
 } from '../../api/services/coupons';
 import { listCourseOptions } from '../../api/services/courses';
 import { useAccessState } from '../../state/access';
+import { useCurrentUser } from '../../state/profile';
 import { getSessionVersion } from '../../state/session';
 import { queryClient } from '../../state/queryClient';
 import { couponStatus, draftSchema, emptyDraft, importDraft } from './model';
@@ -51,9 +52,15 @@ function CouponEditor({
   const [dragging, setDragging] = useState(false);
   const [filename, setFilename] = useState('');
   const busy = pending || reading;
+  const { isInstructor } = useAccessState();
+  const currentUser = useCurrentUser();
   const courses = useQuery({
-    queryKey: ['courses', 'coupon-options'],
-    queryFn: ({ signal }) => listCourseOptions(signal),
+    queryKey: [
+      'courses',
+      'coupon-options',
+      isInstructor ? currentUser.data?.id : 'all',
+    ],
+    queryFn: ({ signal }) => listCourseOptions(signal, isInstructor),
   });
   const courseOptions = (courses.data ?? []).map((course) => ({
     value: course.id,

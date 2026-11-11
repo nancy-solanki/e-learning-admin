@@ -2,10 +2,13 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import * as ratingsApi from '../api/services/ratings';
 import { queryClient, queryKeys } from './queryClient';
 
-export function useRatings(filters: ratingsApi.RatingFilters) {
+export function useRatings(
+  filters: ratingsApi.RatingFilters,
+  audience: 'management' | 'instructor' = 'management',
+) {
   return useQuery({
-    queryKey: [...queryKeys.ratings, 'list', filters],
-    queryFn: ({ signal }) => ratingsApi.listRatings(filters, signal),
+    queryKey: [...queryKeys.ratings, 'list', audience, filters],
+    queryFn: ({ signal }) => ratingsApi.listRatings(filters, signal, audience),
   });
 }
 

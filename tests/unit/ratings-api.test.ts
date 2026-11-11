@@ -71,6 +71,18 @@ describe('ratings API', () => {
     expect(await listRatings(filters, signal)).toEqual(result);
   });
 
+  it('loads instructor-owned ratings from the instructor list endpoint', async () => {
+    const filters = { page: 1, search: 'helpful' };
+    const result = { count: 0, next: null, previous: null, results: [] };
+    api.defaults.adapter = async (config) => {
+      expect(config.url).toBe('/api/v1/rating/instructor/');
+      expect(config.params).toEqual(filters);
+      return response(result, config);
+    };
+
+    expect(await listRatings(filters, undefined, 'instructor')).toEqual(result);
+  });
+
   it('retrieves one rating using an encoded UUID detail URL', async () => {
     const id = 'rating/part ?#';
     const rating: Rating = {

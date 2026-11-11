@@ -53,8 +53,10 @@ export const listCategoryOptions = (signal?: AbortSignal) =>
 
 export async function listRatingCourseOptions(
   signal?: AbortSignal,
+  instructorScoped = false,
 ): Promise<ListOption[]> {
-  return (await listCourseOptions(signal)).map((course) => ({
+  const courses = await listCourseOptions(signal, instructorScoped);
+  return courses.map((course) => ({
     value: course.id,
     label: course.title,
   }));

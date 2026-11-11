@@ -18,7 +18,9 @@ for (const role of ['anonymous', 'learner']) {
   });
 }
 
-test('instructors can access ratings and management data', async ({ page }) => {
+test('instructors can access ratings through the instructor list endpoint', async ({
+  page,
+}) => {
   await sessionAs(page, 'instructor');
   const state = await mockRatings(page);
   await page.goto('/ratings');
@@ -27,6 +29,7 @@ test('instructors can access ratings and management data', async ({ page }) => {
     page.getByRole('heading', { name: 'Ratings', exact: true }).first(),
   ).toBeVisible();
   expect(state.lists.length).toBeGreaterThan(0);
+  expect(state.lists[0].pathname).toBe('/api/v1/rating/instructor/');
 });
 
 test('ratings navigation, server pagination, search and empty results', async ({

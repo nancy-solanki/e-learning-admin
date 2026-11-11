@@ -9,6 +9,8 @@ import {
   listRatingCourseOptions,
   listRatingUserOptions,
 } from '../../api/services/options';
+import { useAccessState } from '../../state/access';
+import { useCurrentUser } from '../../state/profile';
 
 export function RatingFiltersDrawer({
   filters,
@@ -20,6 +22,9 @@ export function RatingFiltersDrawer({
   onClose: () => void;
 }) {
   const [draft, setDraft] = useState(filters);
+  const { isInstructor } = useAccessState();
+  const currentUser = useCurrentUser();
+  const instructorId = isInstructor ? currentUser.data?.id : undefined;
   const update = (name: keyof RatingFilterValues, value: string) =>
     setDraft((current) => ({ ...current, [name]: value }));
 
@@ -58,22 +63,30 @@ export function RatingFiltersDrawer({
             label="Course"
             value={draft.course}
             onChange={(value) => update('course', value)}
-            queryKey={['rating-filter-options', 'courses']}
-            loadOptions={listRatingCourseOptions}
+            queryKey={[
+              'rating-filter-options',
+              'courses',
+              instructorId ?? 'all',
+            ]}
+            loadOptions={(signal) =>
+              listRatingCourseOptions(signal, isInstructor)
+            }
             allLabel="All courses"
           />
         </Field>
-        <Field label="Reviewer" htmlFor="rating-filter-user">
-          <AsyncSelect
-            id="rating-filter-user"
-            label="Reviewer"
-            value={draft.user}
-            onChange={(value) => update('user', value)}
-            queryKey={['rating-filter-options', 'reviewers']}
-            loadOptions={listRatingUserOptions}
-            allLabel="All reviewers"
-          />
-        </Field>
+        {!isInstructor && (
+          <Field label="Reviewer" htmlFor="rating-filter-user">
+            <AsyncSelect
+              id="rating-filter-user"
+              label="Reviewer"
+              value={draft.user}
+              onChange={(value) => update('user', value)}
+              queryKey={['rating-filter-options', 'reviewers']}
+              loadOptions={listRatingUserOptions}
+              allLabel="All reviewers"
+            />
+          </Field>
+        )}
         <Field label="Exact rating" htmlFor="rating-filter-score">
           <Input
             id="rating-filter-score"

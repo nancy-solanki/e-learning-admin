@@ -8,19 +8,25 @@ type CoursePage =
 
 export async function listCourseOptions(
   signal?: AbortSignal,
+  instructorScoped = false,
 ): Promise<CourseOption[]> {
   const courses: CourseOption[] = [];
   const base = new URL(
     API_ROOT || window.location.origin,
     window.location.origin,
   );
-  let next: string | null = ENDPOINTS.COURSE.LIST;
+  let next: string | null = instructorScoped
+    ? ENDPOINTS.COURSE.ADMIN_LIST
+    : ENDPOINTS.COURSE.LIST;
   const visited = new Set<string>();
   while (next) {
     const url: URL = new URL(next, base);
     if (
       url.origin !== base.origin ||
-      url.pathname !== ENDPOINTS.COURSE.LIST ||
+      url.pathname !==
+        (instructorScoped
+          ? ENDPOINTS.COURSE.ADMIN_LIST
+          : ENDPOINTS.COURSE.LIST) ||
       visited.has(url.href)
     ) {
       throw new Error('Invalid course pagination URL.');

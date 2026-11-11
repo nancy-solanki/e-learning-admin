@@ -112,5 +112,22 @@ export async function mockRatings(page: Page, count = 21) {
       },
     });
   });
+  await page.route('**/api/v1/rating/instructor/**', async (route) => {
+    const url = new URL(route.request().url());
+    state.lists.push(url);
+    if (state.failList)
+      return route.fulfill({
+        status: 503,
+        json: { detail: 'Ratings unavailable' },
+      });
+    return route.fulfill({
+      json: {
+        count: state.records.length,
+        next: null,
+        previous: null,
+        results: state.records,
+      },
+    });
+  });
   return state;
 }

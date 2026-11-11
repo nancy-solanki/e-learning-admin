@@ -20,6 +20,7 @@ import {
 } from '../../components/ratings/ratingFilters';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useRating, useRatingActions, useRatings } from '../../state/ratings';
+import { useAccessState } from '../../state/access';
 
 const pageSize = 20;
 
@@ -59,6 +60,7 @@ function RatingDetails({
   onDelete: (rating: Rating) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const { isInstructor } = useAccessState();
   const query = useRating(id);
   const rating = query.data;
 
@@ -151,10 +153,18 @@ function RatingDetails({
             </div>
           </dl>
           <div className="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-5">
-            <Button onClick={() => onDelete(rating)}>Delete rating</Button>
-            <Button variant="primary" onClick={() => onEdit(rating)}>
-              Edit rating
-            </Button>
+            {isInstructor ? (
+              <Button variant="primary" onClick={() => onEdit(rating)}>
+                Reply to rating
+              </Button>
+            ) : (
+              <>
+                <Button onClick={() => onDelete(rating)}>Delete rating</Button>
+                <Button variant="primary" onClick={() => onEdit(rating)}>
+                  Edit rating
+                </Button>
+              </>
+            )}
           </div>
         </>
       ) : null}
@@ -176,6 +186,7 @@ export default function RatingsPage() {
   const [deletePending, setDeletePending] = useState(false);
   const [notice, setNotice] = useState('');
   const { deleteRating } = useRatingActions();
+  const { isInstructor } = useAccessState();
 
   const queryFilters: RatingFilters = {
     page,
@@ -193,7 +204,10 @@ export default function RatingsPage() {
     ...(debouncedSearch ? { search: debouncedSearch } : {}),
     ordering: filters.ordering,
   };
-  const query = useRatings(queryFilters);
+  const query = useRatings(
+    queryFilters,
+    isInstructor ? 'instructor' : 'management',
+  );
   const data = query.data;
   const filterCount = activeRatingFilterCount(filters);
   const hasFilters = Boolean(search.trim() || filterCount);
@@ -401,21 +415,23 @@ export default function RatingsPage() {
                             type="button"
                             onClick={() => setEditingRating(item)}
                             className="font-semibold text-brand hover:underline"
-                            aria-label={`Edit rating by ${relationLabel(item.user)}`}
+                            aria-label={`${isInstructor ? 'Reply to' : 'Edit'} rating by ${relationLabel(item.user)}`}
                           >
-                            Edit
+                            {isInstructor ? 'Reply' : 'Edit'}
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDeleteError('');
-                              setDeletingRating(item);
-                            }}
-                            className="font-semibold text-rose-700 hover:underline"
-                            aria-label={`Delete rating by ${relationLabel(item.user)}`}
-                          >
-                            Delete
-                          </button>
+                          {!isInstructor && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDeleteError('');
+                                setDeletingRating(item);
+                              }}
+                              className="font-semibold text-rose-700 hover:underline"
+                              aria-label={`Delete rating by ${relationLabel(item.user)}`}
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -462,7 +478,7 @@ export default function RatingsPage() {
           }}
         />
       )}
-      {deletingRating && (
+      {deletingRating && !isInstructor && (
         <ConfirmationDialog
           title="Delete rating?"
           description={`This rating for “${deletingRating.course_title || courseLabel(deletingRating)}” will be soft-deleted and removed from the management list.`}

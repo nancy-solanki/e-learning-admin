@@ -39,6 +39,7 @@ import {
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { queryClient } from '../../state/queryClient';
 import { useAccessState } from '../../state/access';
+import { useCurrentUser } from '../../state/profile';
 
 const sectionStatuses: SectionStatus[] = [
   'published',
@@ -344,7 +345,8 @@ export default function CurriculumPage({
   kind: 'sections' | 'lectures';
 }) {
   const lecture = kind === 'lectures';
-  const { canAccess } = useAccessState();
+  const { canAccess, isInstructor } = useAccessState();
+  const currentUser = useCurrentUser();
   const allowed = canAccess(lecture ? 'lectures' : 'sections');
   const [params, setParams] = useSearchParams();
   const pageValue = params.get('page');
@@ -402,8 +404,8 @@ export default function CurriculumPage({
     });
 
   const courseOptions = useQuery({
-    queryKey: ['course-options'],
-    queryFn: ({ signal }) => listCourseOptions(signal),
+    queryKey: ['course-options', isInstructor ? currentUser.data?.id : 'all'],
+    queryFn: ({ signal }) => listCourseOptions(signal, isInstructor),
     enabled: allowed,
   });
   const instructorOptions = useQuery({

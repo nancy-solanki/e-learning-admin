@@ -29,7 +29,6 @@ export type CouponPage = {
 export type CouponFilters = {
   search?: string;
   coupon_type?: string;
-  is_deleted?: boolean;
   course?: string;
   is_global?: boolean;
   is_unlimited?: boolean;
@@ -42,14 +41,10 @@ export type CouponFilters = {
   page_size: number;
 };
 type CouponScope = 'admin' | 'instructor';
-function couponEndpoint(scope: CouponScope, id?: string) {
-  return scope === 'instructor'
-    ? id
-      ? ENDPOINTS.COUPON.INSTRUCTOR_DETAIL(id)
-      : ENDPOINTS.COUPON.INSTRUCTOR
-    : id
-      ? ENDPOINTS.COUPON.DETAIL(id)
-      : ENDPOINTS.COUPON.MANAGEMENT;
+function couponEndpoint(_scope: CouponScope, id?: string) {
+  return id
+    ? ENDPOINTS.COUPON.DETAIL(id)
+    : ENDPOINTS.COUPON.MANAGEMENT;
 }
 export async function listCoupons(
   params: CouponFilters,
@@ -59,6 +54,18 @@ export async function listCoupons(
   return (
     await api.get<CouponPage>(couponEndpoint(scope), { params, signal })
   ).data;
+}
+export async function listCouponsNext(next: string, signal?: AbortSignal) {
+  const base = api.defaults.baseURL ?? 'http://localhost';
+  const url = new URL(next, base);
+  if (
+    url.origin !== new URL(base).origin ||
+    !url.pathname.startsWith('/api/v1/coupon/management/')
+  ) {
+    throw new Error('Invalid coupon pagination URL.');
+  }
+  return (await api.get<CouponPage>(`${url.pathname}${url.search}`, { signal }))
+    .data;
 }
 export async function getCoupon(id: string, scope: CouponScope = 'admin') {
   return (await api.get<Coupon>(couponEndpoint(scope, id))).data;
@@ -77,6 +84,24 @@ export async function saveCoupon(
       data: payload,
     })
   ).data;
+}
+export async function replaceCoupon(
+  body: Partial<CouponDraft>,
+  id: string,
+  scope: CouponScope = 'admin',
+) {
+  const payload = { ...body };
+  if (scope === 'instructor') delete payload.is_instructor_created;
+  return (
+    await api.put<Coupon>(couponEndpoint(scope, id), payload)
+  ).data;
+}
+export async function updateCoupon(
+  body: Partial<CouponDraft>,
+  id: string,
+  scope: CouponScope = 'admin',
+) {
+  return saveCoupon(body, id, scope);
 }
 export async function toggleCoupon(id: string, scope: CouponScope = 'admin') {
   // DELETE toggles state, so even authentication retries must be disabled.

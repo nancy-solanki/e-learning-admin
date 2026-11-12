@@ -15,6 +15,7 @@ import { apiErrorMessage, apiFieldErrors } from '../../api/errors';
 import {
   getCoupon,
   listCoupons,
+  listCouponsNext,
   saveCoupon,
   toggleCoupon,
   type Coupon,
@@ -45,7 +46,10 @@ function CouponEditor({
   const dialog = useRef<HTMLDialogElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState<CouponDraft>(() =>
-    coupon ? draftSchema.parse(coupon) : emptyDraft(admin),
+    coupon ? draftSchema.parse(coupon) : emptyDraft(admin, instructor),
+  );
+  const [instructorProvided, setInstructorProvided] = useState<Set<string>>(
+    () => new Set(['code', 'course']),
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
@@ -93,6 +97,7 @@ function CouponEditor({
   }, []);
   function update<K extends keyof CouponDraft>(key: K, value: CouponDraft[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
+    if (instructor) setInstructorProvided((current) => new Set(current).add(key));
     setErrors((current) => ({ ...current, [key]: '' }));
   }
   async function choose(files: File[]) {
@@ -107,12 +112,22 @@ function CouponEditor({
         throw new Error('Please choose a .json coupon file.');
       if (file.size > 1024 * 1024)
         throw new Error('Choose a file smaller than 1 MB.');
-      const imported = importDraft(await file.text(), admin);
+      const text = await file.text();
+      const imported = importDraft(text, admin, instructor);
       const available = await courses.refetch();
       const validCourse =
         available.isSuccess &&
         available.data.some((course) => course.id === imported.course);
       setDraft({ ...imported, course: validCourse ? imported.course : '' });
+      if (instructor) {
+        setInstructorProvided(
+          new Set([
+            'code',
+            'course',
+            ...Object.keys(JSON.parse(text) as object),
+          ]),
+        );
+      }
       setFilename(file.name);
       setErrors(
         validCourse
@@ -164,7 +179,13 @@ function CouponEditor({
               ([key, value]) => coupon[key as keyof CouponDraft] !== value,
             ),
           )
-        : result.data;
+        : instructor
+          ? Object.fromEntries(
+              Object.entries(result.data).filter(([key]) =>
+                instructorProvided.has(key),
+              ),
+            )
+          : result.data;
       onSaved(
         await saveCoupon(body, coupon?.id, instructor ? 'instructor' : 'admin'),
       );
@@ -488,10 +509,12 @@ export default function CouponsPage() {
   const [status, setStatus] = useState('current');
   const [ordering, setOrdering] = useState('-created_at');
   const [page, setPage] = useState(1);
+  const [pageUrls, setPageUrls] = useState<(string | null)[]>([null]);
   const [previousQuery, setPreviousQuery] = useState(query);
   if (previousQuery !== query) {
     setPreviousQuery(query);
     setPage(1);
+    setPageUrls([null]);
   }
   const [editor, setEditor] = useState<{ coupon: Coupon | null } | null>(null);
   const [target, setTarget] = useState<Coupon | null>(null);
@@ -503,15 +526,19 @@ export default function CouponsPage() {
   const filters = {
     search: query || undefined,
     coupon_type: type || undefined,
-    is_deleted: status === 'all' ? undefined : status === 'deleted',
     ordering,
-    page,
     page_size: 20,
   };
   const coupons = useQuery({
-    queryKey: ['coupons', filters],
+    queryKey: ['coupons', filters, page, pageUrls],
     queryFn: ({ signal }) =>
-      listCoupons(filters, signal, instructor ? 'instructor' : 'admin'),
+      page > 1 && pageUrls[page - 1]
+        ? listCouponsNext(pageUrls[page - 1]!, signal)
+        : listCoupons(
+            { ...filters, page: 1 },
+            signal,
+            instructor ? 'instructor' : 'admin',
+          ),
     enabled: allowed,
   });
   const data = coupons.data;
@@ -640,6 +667,7 @@ export default function CouponsPage() {
           onChange={(value) => {
             setType(value);
             setPage(1);
+            setPageUrls([null]);
           }}
           options={[
             { value: '', label: 'All discount types' },
@@ -654,6 +682,7 @@ export default function CouponsPage() {
             onChange={(value) => {
               setStatus(value);
               setPage(1);
+              setPageUrls([null]);
             }}
             options={[
               { value: 'current', label: 'Not deleted' },
@@ -668,6 +697,7 @@ export default function CouponsPage() {
           onChange={(value) => {
             setOrdering(value);
             setPage(1);
+            setPageUrls([null]);
           }}
           options={[
             { value: '-created_at', label: 'Newest first' },
@@ -703,7 +733,10 @@ export default function CouponsPage() {
           <button
             className="category-secondary"
             onClick={() => {
-              if (page > 1) setPage(1);
+              if (page > 1) {
+                setPage(1);
+                setPageUrls([null]);
+              }
               else void coupons.refetch();
             }}
           >
@@ -734,6 +767,7 @@ export default function CouponsPage() {
               setType('');
               setStatus('current');
               setPage(1);
+              setPageUrls([null]);
             }}
           >
             Reset filters
@@ -825,10 +859,15 @@ export default function CouponsPage() {
           <Pagination
             page={page}
             count={data.count}
-            pageSize={9}
+            pageSize={20}
             visibleCount={data.results.length}
             hasNext={!!data.next}
-            onPageChange={setPage}
+            onPageChange={(next) => {
+              if (next === page + 1 && data.next) {
+                setPageUrls((urls) => [...urls.slice(0, page), data.next]);
+                setPage(next);
+              } else if (next < page) setPage(next);
+            }}
             label="Coupons pagination"
           />
         </>

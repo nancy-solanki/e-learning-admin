@@ -11,20 +11,24 @@ export const draftSchema = z.object({
   is_instructor_created: z.boolean(),
   expired_at: z.iso.date().nullable(),
 });
-export function emptyDraft(admin: boolean): CouponDraft {
+export function emptyDraft(admin: boolean, instructor = !admin): CouponDraft {
   return {
     code: '',
     course: '',
     coupon_type: 'percentage',
     value: 10,
-    limit: 100,
+    limit: instructor ? 10 : 100,
     is_unlimited: false,
     is_global: false,
     is_instructor_created: !admin,
     expired_at: null,
   };
 }
-export function importDraft(text: string, admin: boolean): CouponDraft {
+export function importDraft(
+  text: string,
+  admin: boolean,
+  instructor = !admin,
+): CouponDraft {
   const parsed: unknown = JSON.parse(text);
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
     throw new Error('Choose a JSON file containing one coupon object.');
@@ -35,7 +39,7 @@ export function importDraft(text: string, admin: boolean): CouponDraft {
         .nullable()
         .transform((value) => value ?? ''),
     })
-    .safeParse({ ...emptyDraft(admin), ...parsed });
+    .safeParse({ ...emptyDraft(admin, instructor), ...parsed });
   if (!result.success)
     throw new Error(
       result.error.issues

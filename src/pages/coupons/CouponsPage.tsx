@@ -32,11 +32,13 @@ import './coupons.css';
 function CouponEditor({
   coupon,
   admin,
+  instructor,
   onClose,
   onSaved,
 }: {
   coupon: Coupon | null;
   admin: boolean;
+  instructor: boolean;
   onClose: () => void;
   onSaved: (coupon: Coupon) => void;
 }) {
@@ -163,7 +165,9 @@ function CouponEditor({
             ),
           )
         : result.data;
-      onSaved(await saveCoupon(body, coupon?.id));
+      onSaved(
+        await saveCoupon(body, coupon?.id, instructor ? 'instructor' : 'admin'),
+      );
     } catch (failure) {
       setErrors(apiFieldErrors(failure));
       setError(apiErrorMessage(failure, 'Unable to save this coupon.'));
@@ -472,7 +476,11 @@ function CouponEditor({
 }
 
 export default function CouponsPage() {
-  const { isAdmin: admin, canAccess } = useAccessState();
+  const {
+    isAdmin: admin,
+    isInstructor: instructor,
+    canAccess,
+  } = useAccessState();
   const allowed = canAccess('coupons');
   const [search, setSearch] = useState('');
   const query = useDebouncedValue(search.trim());
@@ -498,11 +506,12 @@ export default function CouponsPage() {
     is_deleted: status === 'all' ? undefined : status === 'deleted',
     ordering,
     page,
-    page_size: 9,
+    page_size: 20,
   };
   const coupons = useQuery({
     queryKey: ['coupons', filters],
-    queryFn: ({ signal }) => listCoupons(filters, signal),
+    queryFn: ({ signal }) =>
+      listCoupons(filters, signal, instructor ? 'instructor' : 'admin'),
     enabled: allowed,
   });
   const data = coupons.data;
@@ -515,7 +524,10 @@ export default function CouponsPage() {
     setOpening(true);
     setActionError('');
     try {
-      const latest = await getCoupon(coupon.id);
+      const latest = await getCoupon(
+        coupon.id,
+        instructor ? 'instructor' : 'admin',
+      );
       if (version === getSessionVersion()) setEditor({ coupon: latest });
     } catch (failure) {
       setActionError(apiErrorMessage(failure, 'Unable to open this coupon.'));
@@ -528,7 +540,10 @@ export default function CouponsPage() {
     setPending(true);
     setActionError('');
     try {
-      const result = await toggleCoupon(target.id);
+      const result = await toggleCoupon(
+        target.id,
+        instructor ? 'instructor' : 'admin',
+      );
       setNotice(result.message);
       setTarget(null);
       if (data?.results.length === 1 && page > 1 && status !== 'all')
@@ -822,6 +837,7 @@ export default function CouponsPage() {
         <CouponEditor
           coupon={editor.coupon}
           admin={admin}
+          instructor={instructor}
           onClose={() => setEditor(null)}
           onSaved={(saved) => {
             setNotice(

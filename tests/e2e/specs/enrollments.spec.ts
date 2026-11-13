@@ -107,7 +107,7 @@ test('instructor enrollment management and published course roster', async ({
   await expect(page.getByRole('dialog').getByText('Not rated')).toBeVisible();
   await expect(
     page.getByRole('dialog').getByText('0%', { exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(2);
 });
 
 test('learners cannot access report or navigation', async ({ page }) => {

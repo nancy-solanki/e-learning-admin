@@ -178,7 +178,11 @@ function EnrollmentReport() {
         );
         return result.results
           .filter((item) => item.status === 'published' && item.slug)
-          .map((item) => ({ id: item.id, title: item.title, slug: item.slug! }));
+          .map((item) => ({
+            id: item.id,
+            title: item.title,
+            slug: item.slug!,
+          }));
       }),
     retry: false,
     enabled: !accessError,

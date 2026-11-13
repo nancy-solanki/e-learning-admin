@@ -97,7 +97,8 @@ function CouponEditor({
   }, []);
   function update<K extends keyof CouponDraft>(key: K, value: CouponDraft[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
-    if (instructor) setInstructorProvided((current) => new Set(current).add(key));
+    if (instructor)
+      setInstructorProvided((current) => new Set(current).add(key));
     setErrors((current) => ({ ...current, [key]: '' }));
   }
   async function choose(files: File[]) {
@@ -736,8 +737,7 @@ export default function CouponsPage() {
               if (page > 1) {
                 setPage(1);
                 setPageUrls([null]);
-              }
-              else void coupons.refetch();
+              } else void coupons.refetch();
             }}
           >
             Try again

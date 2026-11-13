@@ -42,18 +42,15 @@ export type CouponFilters = {
 };
 type CouponScope = 'admin' | 'instructor';
 function couponEndpoint(_scope: CouponScope, id?: string) {
-  return id
-    ? ENDPOINTS.COUPON.DETAIL(id)
-    : ENDPOINTS.COUPON.MANAGEMENT;
+  return id ? ENDPOINTS.COUPON.DETAIL(id) : ENDPOINTS.COUPON.MANAGEMENT;
 }
 export async function listCoupons(
   params: CouponFilters,
   signal?: AbortSignal,
   scope: CouponScope = 'admin',
 ) {
-  return (
-    await api.get<CouponPage>(couponEndpoint(scope), { params, signal })
-  ).data;
+  return (await api.get<CouponPage>(couponEndpoint(scope), { params, signal }))
+    .data;
 }
 export async function listCouponsNext(next: string, signal?: AbortSignal) {
   const base = api.defaults.baseURL ?? 'http://localhost';
@@ -92,9 +89,7 @@ export async function replaceCoupon(
 ) {
   const payload = { ...body };
   if (scope === 'instructor') delete payload.is_instructor_created;
-  return (
-    await api.put<Coupon>(couponEndpoint(scope, id), payload)
-  ).data;
+  return (await api.put<Coupon>(couponEndpoint(scope, id), payload)).data;
 }
 export async function updateCoupon(
   body: Partial<CouponDraft>,

@@ -1,18 +1,17 @@
 import { afterEach, expect, it } from 'vitest';
-import { AxiosHeaders, AxiosError } from 'axios';
 import { api } from '../../src/api/axios';
 import {
   listEnrollments,
-  enrollmentSummary,
-  enrollmentCourses,
-  exportEnrollments,
+  listCourseEnrollments,
   enrollmentDetail,
 } from '../../src/api/services/enrollments';
+
 const adapter = api.defaults.adapter;
 afterEach(() => {
   api.defaults.adapter = adapter;
 });
-it('shares reporting filters, omits export pagination, and paginates unfiltered course options', async () => {
+
+it('requests paginated management and course roster data with supported filters', async () => {
   const filters = {
     search: 'Emma design',
     course: 'course-uuid',
@@ -29,48 +28,35 @@ it('shares reporting filters, omits export pagination, and paginates unfiltered 
     expect(config.withCredentials).toBe(true);
     expect(config.signal).toBe(signal);
     expect(config.method).toBe('get');
-    let data: unknown = {};
-    if (config.url?.endsWith('/courses/')) {
-      expect(Object.keys(config.params)).toEqual(['page']);
-      data = {
-        results: [{ id: String(config.params.page) }],
-        next: config.params.page === 1 ? '?page=2' : null,
-      };
-    } else if (config.url?.endsWith('/management/'))
+    expect(config.data).toBeUndefined();
+    if (config.url?.includes('/course/')) {
       expect(config.params).toEqual({ ...filters, page: 2 });
-    else if (
-      config.url?.endsWith('/summary/') ||
-      config.url?.endsWith('/export/')
-    )
-      expect(config.params).toEqual(filters);
-    if (config.url?.endsWith('/export/'))
-      expect(config.responseType).toBe('blob');
+    } else if (config.url?.endsWith('/management/')) {
+      expect(config.params).toEqual({ ...filters, page: 2 });
+    } else {
+      expect(config.params).toBeUndefined();
+    }
     return {
-      data,
+      data: {
+        count: 1,
+        next: null,
+        previous: null,
+        results: [
+          { id: 'enrollment-id', user: { username: 'emma' }, progress: 0 },
+        ],
+      },
       config,
       status: 200,
       statusText: 'OK',
-      headers: new AxiosHeaders(),
+      headers: {},
     };
   };
   await listEnrollments(filters, 2, signal);
-  await enrollmentSummary(filters, signal);
-  await exportEnrollments(filters, signal);
-  expect(await enrollmentCourses(signal)).toEqual([{ id: '1' }, { id: '2' }]);
+  await listCourseEnrollments('my-course', filters, 2, signal);
   await enrollmentDetail('uuid/part', signal);
-  expect(seen.at(-1)).toBe('/api/v1/enroll/management/uuid%2Fpart/');
-});
-it('rejects export errors and decodes blob validation errors', async () => {
-  api.defaults.adapter = async (config) => {
-    throw new AxiosError('Bad request', 'ERR_BAD_REQUEST', config, undefined, {
-      data: new Blob([JSON.stringify({ course: ['Invalid UUID.'] })]),
-      status: 400,
-      statusText: 'Bad request',
-      config,
-      headers: new AxiosHeaders(),
-    });
-  };
-  await expect(exportEnrollments({ course: 'bad' })).rejects.toMatchObject({
-    response: { status: 400, data: { course: ['Invalid UUID.'] } },
-  });
+  expect(seen).toEqual([
+    '/api/v1/enroll/management/',
+    '/api/v1/enroll/course/my-course/',
+    '/api/v1/enroll/management/uuid%2Fpart/',
+  ]);
 });

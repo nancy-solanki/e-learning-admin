@@ -1,5 +1,5 @@
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { EnrollmentIcon } from '../../components/icons/AdminIcons';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -13,26 +13,21 @@ import { Select } from '../../components/ui/Select';
 import axios from 'axios';
 import { useQuery } from '@tanstack/react-query';
 import { useCurrentUser } from '../../state/profile';
-import { useAccessState } from '../../state/access';
-import { listCourseOptions } from '../../api/services/courses';
+import { listAdminCourses } from '../../api/services/courses';
 import { getSessionVersion } from '../../state/session';
 import { apiErrorMessage } from '../../api/errors';
 import { Avatar } from '../../components/ui/Avatar';
 import {
   listEnrollments,
-  enrollmentSummary,
-  enrollmentCourses,
+  listCourseEnrollments,
   enrollmentDetail,
-  exportEnrollments,
   type Enrollment,
 } from '../../api/services/enrollments';
 
 const studentName = (entry: Enrollment) =>
   entry.user.full_name || entry.user.username;
 const enrolledDate = (entry: Enrollment) =>
-  entry.created_at
-    ? new Date(entry.created_at).toLocaleString()
-    : 'Unavailable';
+  new Date(entry.created_at).toLocaleString();
 const statusCode = (error: unknown) =>
   axios.isAxiosError(error) ? error.response?.status : undefined;
 function ErrorNotice({ error, retry }: { error: unknown; retry: () => void }) {
@@ -58,8 +53,8 @@ function ErrorNotice({ error, retry }: { error: unknown; retry: () => void }) {
 function Progress({ entry }: { entry: Enrollment }) {
   return (
     <div className="text-xs text-slate-500">
-      <p>Progress unavailable</p>
-      <p className="mt-2">{entry.total_lessons} lessons</p>
+      <p>{entry.progress}%</p>
+      <p className="mt-2">Lesson tracking unavailable</p>
     </div>
   );
 }
@@ -102,7 +97,6 @@ function EnrollmentDialog({
         <>
           <Avatar user={entry.user} className="mb-3 size-10" />
           <h3 className="font-bold">{studentName(entry)}</h3>
-          <p className="mt-1 text-sm text-slate-500">{entry.user.email}</p>
           <p className="my-5 rounded-xl bg-violet-50 p-4 text-sm font-semibold leading-6 text-brand">
             {entry.course.title}
           </p>
@@ -110,8 +104,8 @@ function EnrollmentDialog({
             {[
               ['Enrollment ID', entry.id],
               ['Enrolled on', enrolledDate(entry)],
-              ['Status', 'Unknown'],
-              ['Access', entry.access ?? 'Not specified'],
+              ['Average rating', entry.average_rating ?? 'Not rated'],
+              ['Progress', `${entry.progress}%`],
             ].map(([label, value]) => (
               <div key={label}>
                 <dt className="mb-1 text-xs text-slate-500">{label}</dt>
@@ -147,7 +141,6 @@ export default function EnrollmentsPage() {
   return <EnrollmentReport key={`${profile.id}:${getSessionVersion()}`} />;
 }
 function EnrollmentReport() {
-  const { isInstructor } = useAccessState();
   const profile = useCurrentUser();
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
@@ -155,21 +148,15 @@ function EnrollmentReport() {
   const [pagination, setPagination] = useState({ key: '', page: 1 });
   const filters = {
     search: debouncedSearch || undefined,
-    course: course || undefined,
     ordering: '-created_at' as const,
   };
   const filterKey = JSON.stringify(filters);
   const page = pagination.key === filterKey ? pagination.page : 1;
   const [selected, setSelected] = useState<string | null>(null);
   const [accessError, setAccessError] = useState<number>();
-  const [exportError, setExportError] = useState<unknown>();
-  const [exporting, setExporting] = useState(false);
-  const exportController = useRef<AbortController | null>(null);
-  useEffect(() => () => exportController.current?.abort(), []);
   const handleAccessError = (error: unknown) => {
     const code = statusCode(error);
     if (code === 401 || code === 403) {
-      exportController.current?.abort();
       setAccessError(code);
     }
   };
@@ -181,69 +168,36 @@ function EnrollmentReport() {
       throw error;
     }
   };
-  const table = useQuery({
-    queryKey: ['enrollments', 'list', filters, page],
-    queryFn: ({ signal }) =>
-      guarded(() => listEnrollments(filters, page, signal)),
-    retry: false,
-    enabled: !accessError,
-    gcTime: 0,
-  });
-  const summary = useQuery({
-    queryKey: ['enrollments', 'summary', filters],
-    queryFn: ({ signal }) => guarded(() => enrollmentSummary(filters, signal)),
-    retry: false,
-    enabled: !accessError,
-    gcTime: 0,
-  });
   const courses = useQuery({
-    queryKey: [
-      'enrollments',
-      'courses',
-      isInstructor ? profile.data?.id : 'enrolled',
-    ],
+    queryKey: ['enrollments', 'courses', profile.data?.id],
     queryFn: ({ signal }) =>
       guarded(async () => {
-        if (isInstructor) {
-          const options = await listCourseOptions(signal, true);
-          return options.map((course) => ({
-            id: course.id,
-            title: course.title,
-          }));
-        }
-        return enrollmentCourses(signal);
+        const result = await listAdminCourses(
+          { status: 'published', ordering: 'title' },
+          signal,
+        );
+        return result.results
+          .filter((item) => item.status === 'published' && item.slug)
+          .map((item) => ({ id: item.id, title: item.title, slug: item.slug! }));
       }),
     retry: false,
     enabled: !accessError,
     gcTime: 0,
   });
+  const selectedCourse = courses.data?.find((item) => item.id === course);
+  const table = useQuery({
+    queryKey: ['enrollments', 'list', filters, selectedCourse?.slug, page],
+    queryFn: ({ signal }) =>
+      guarded(() =>
+        selectedCourse
+          ? listCourseEnrollments(selectedCourse.slug, filters, page, signal)
+          : listEnrollments(filters, page, signal),
+      ),
+    retry: false,
+    enabled: !accessError && (!course || !!selectedCourse),
+    gcTime: 0,
+  });
   const filtered = table.isError ? [] : (table.data?.results ?? []);
-  const exportCsv = async () => {
-    if (exportController.current) return;
-    const controller = new AbortController();
-    exportController.current = controller;
-    const version = getSessionVersion();
-    setExporting(true);
-    setExportError(undefined);
-    try {
-      const blob = await exportEnrollments(filters, controller.signal);
-      if (controller.signal.aborted || version !== getSessionVersion()) return;
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'enrollments.csv';
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (error) {
-      if (!controller.signal.aborted) {
-        handleAccessError(error);
-        setExportError(error);
-      }
-    } finally {
-      exportController.current = null;
-      setExporting(false);
-    }
-  };
   if (accessError)
     return (
       <div role="alert">
@@ -260,59 +214,13 @@ function EnrollmentReport() {
       <PageHeading
         title="Enrollments"
         eyebrow="Enrollment management"
-        description="View learner enrollments, course details, and enrollment records."
-        action={
-          <Button
-            disabled={exporting || search.trim() !== debouncedSearch}
-            onClick={() => void exportCsv()}
-          >
-            {exporting ? 'Exporting…' : 'Export enrollments'}
-          </Button>
-        }
+        description="View learners enrolled in your courses."
       />
-      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {[
-          [
-            'Total enrollments',
-            summary.isPending
-              ? '…'
-              : summary.isError
-                ? '—'
-                : summary.data?.total_enrollments,
-          ],
-          ...['In progress', 'Completed', 'Not started'].map((value) => [
-            value,
-            '—',
-          ]),
-        ].map(([label, value]) => (
-          <div
-            key={label}
-            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-          >
-            <p className="text-xs text-slate-500">{label}</p>
-            <strong className="mt-2 block text-3xl font-bold">{value}</strong>
-            {label !== 'Total enrollments' && (
-              <p className="mt-2 text-xs text-slate-500">
-                Progress tracking unavailable
-              </p>
-            )}
-          </div>
-        ))}
-      </div>
-      {summary.isError && (
-        <ErrorNotice
-          error={summary.error}
-          retry={() => void summary.refetch()}
-        />
-      )}
       {courses.isError && (
         <ErrorNotice
           error={courses.error}
           retry={() => void courses.refetch()}
         />
-      )}
-      {exportError != null && (
-        <ErrorNotice error={exportError} retry={() => void exportCsv()} />
       )}
       <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-end gap-3">
@@ -338,26 +246,7 @@ function EnrollmentReport() {
               })),
             ]}
           />
-          <Select
-            className="min-w-40 flex-1 lg:max-w-44"
-            label="Enrollment status"
-            value=""
-            disabled
-            describedBy="status-hint"
-            onChange={() => {}}
-            options={[
-              { value: '', label: 'All statuses' },
-              ...['In progress', 'Completed', 'Not started'].map((value) => ({
-                value,
-                label: value,
-              })),
-            ]}
-          />
         </div>
-        <p id="status-hint" className="mt-3 text-xs text-slate-500">
-          Status filtering is unavailable because progress tracking is
-          unavailable.
-        </p>
       </div>
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
@@ -380,7 +269,7 @@ function EnrollmentReport() {
                   'Course',
                   'Enrolled on',
                   'Progress',
-                  'Status',
+                  'Average rating',
                   'Details',
                 ].map((label) => (
                   <th
@@ -406,9 +295,6 @@ function EnrollmentReport() {
                         <p className="whitespace-nowrap font-semibold">
                           {studentName(entry)}
                         </p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {entry.user.email}
-                        </p>
                       </div>
                     </div>
                   </td>
@@ -428,7 +314,7 @@ function EnrollmentReport() {
                   </td>
                   <td className="px-5 py-4">
                     <span className="whitespace-nowrap rounded-md bg-slate-100 px-2 py-1 text-slate-600">
-                      Unknown
+                      {entry.average_rating ?? 'Not rated'}
                     </span>
                   </td>
                   <td className="px-5 py-4">

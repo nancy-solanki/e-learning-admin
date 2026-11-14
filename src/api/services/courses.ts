@@ -108,9 +108,15 @@ export async function listAdminCoursesAt(
   next: string,
   signal?: AbortSignal,
 ): Promise<AdminCoursePage> {
-  const base = new URL(API_ROOT || window.location.origin, window.location.origin);
+  const base = new URL(
+    API_ROOT || window.location.origin,
+    window.location.origin,
+  );
   const url = new URL(next, base);
-  if (url.origin !== base.origin || url.pathname !== ENDPOINTS.COURSE.ADMIN_LIST) {
+  if (
+    url.origin !== base.origin ||
+    url.pathname !== ENDPOINTS.COURSE.ADMIN_LIST
+  ) {
     throw new Error('Invalid course pagination URL.');
   }
   return (await api.get<AdminCoursePage>(url.href, { signal })).data;

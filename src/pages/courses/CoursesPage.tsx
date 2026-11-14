@@ -328,9 +328,8 @@ export default function CoursesPage() {
     if (value === 'true' || value === 'false') filters[key] = value === 'true';
   }
   const pageValue = params.get('page');
-  const initialPage = pageValue && /^[1-9]\d*$/.test(pageValue)
-    ? Number(pageValue)
-    : 1;
+  const initialPage =
+    pageValue && /^[1-9]\d*$/.test(pageValue) ? Number(pageValue) : 1;
   function setFilters(next: AdminCourseFilters, nextOrdering: string) {
     setParams((current) => {
       const updated = new URLSearchParams(current);
@@ -405,12 +404,15 @@ export default function CoursesPage() {
     queryFn: ({ signal, pageParam }) =>
       typeof pageParam === 'string'
         ? listAdminCoursesAt(pageParam, signal)
-        : listAdminCourses({
-            ...filters,
-            search: search || undefined,
-            ordering: ordering || undefined,
-            page: pageParam,
-          }, signal),
+        : listAdminCourses(
+            {
+              ...filters,
+              search: search || undefined,
+              ordering: ordering || undefined,
+              page: pageParam,
+            },
+            signal,
+          ),
     enabled: allowed && search === searchInput.trim(),
   });
   const courseSubmit = useMutation({
@@ -538,14 +540,20 @@ export default function CoursesPage() {
           role="alert"
           className="mb-4 rounded-lg bg-red-50 p-4 text-red-800"
         >
-          <p>{
-            apiErrorMessage(query.error, 'Could not load courses.', { includeFieldErrors: true })
-          }</p>
+          <p>
+            {apiErrorMessage(query.error, 'Could not load courses.', {
+              includeFieldErrors: true,
+            })}
+          </p>
           {Object.entries(apiFieldErrors(query.error)).length > 0 && (
             <ul className="mt-2 list-inside list-disc text-sm">
-              {Object.entries(apiFieldErrors(query.error)).map(([field, message]) => (
-                <li key={field}><strong>{field}:</strong> {message}</li>
-              ))}
+              {Object.entries(apiFieldErrors(query.error)).map(
+                ([field, message]) => (
+                  <li key={field}>
+                    <strong>{field}:</strong> {message}
+                  </li>
+                ),
+              )}
             </ul>
           )}
           <Button

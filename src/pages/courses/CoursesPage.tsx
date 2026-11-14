@@ -3,6 +3,7 @@ import { AsyncSelect } from '../../components/ui/AsyncSelect';
 import {
   listCategoryOptions,
   listInstructorOptions,
+  listTagOptions,
 } from '../../api/services/options';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
@@ -153,11 +154,13 @@ function CourseDialog({
 function CourseFilters({
   filters,
   ordering,
+  showInstructorFilter,
   onApply,
   onClose,
 }: {
   filters: AdminCourseFilters;
   ordering: string;
+  showInstructorFilter: boolean;
   onApply: (filters: AdminCourseFilters, ordering: string) => void;
   onClose: () => void;
 }) {
@@ -239,17 +242,30 @@ function CourseFilters({
             loadOptions={listCategoryOptions}
           />
         </Field>
-        <Field label="Instructor" htmlFor="course-instructor">
+        <Field label="Tag" htmlFor="course-tag">
           <AsyncSelect
-            id="course-instructor"
-            label="Instructors"
-            allLabel="All instructors"
-            value={draft.instructor ?? ''}
-            onChange={(value) => update('instructor', value)}
-            queryKey={['course-filter-options', 'instructors']}
-            loadOptions={listInstructorOptions}
+            id="course-tag"
+            label="Tags"
+            allLabel="All tags"
+            value={draft.tag ?? ''}
+            onChange={(value) => update('tag', value)}
+            queryKey={['course-filter-options', 'tags']}
+            loadOptions={listTagOptions}
           />
         </Field>
+        {showInstructorFilter && (
+          <Field label="Instructor" htmlFor="course-instructor">
+            <AsyncSelect
+              id="course-instructor"
+              label="Instructors"
+              allLabel="All instructors"
+              value={draft.instructor ?? ''}
+              onChange={(value) => update('instructor', value)}
+              queryKey={['course-filter-options', 'instructors']}
+              loadOptions={listInstructorOptions}
+            />
+          </Field>
+        )}
         <OrderingSelect
           id="course-ordering"
           value={draftOrdering}
@@ -313,7 +329,7 @@ export default function CoursesPage() {
   const status = params.get('status');
   if (statuses.includes(status as CourseStatus))
     filters.status = status as CourseStatus;
-  for (const key of ['category', 'instructor'] as const) {
+  for (const key of ['category', 'instructor', 'tag'] as const) {
     const value = params.get(key);
     if (value) filters[key] = value;
   }
@@ -336,6 +352,7 @@ export default function CoursesPage() {
         'status',
         'category',
         'instructor',
+        'tag',
         'price_min',
         'price_max',
         'is_free',
@@ -526,6 +543,7 @@ export default function CoursesPage() {
           key={params.toString()}
           filters={filters}
           ordering={ordering}
+          showInstructorFilter={admin}
           onClose={() => setFiltersOpen(false)}
           onApply={(next, nextOrdering) => {
             setFilters(next, nextOrdering);

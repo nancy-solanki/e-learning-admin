@@ -49,6 +49,11 @@ export async function mockCourses(page: Page) {
       },
     }),
   );
+  await page.route('**/api/v1/tag/', (route) =>
+    route.fulfill({
+      json: [{ id: 'tag-uuid', name: 'Beginner' }],
+    }),
+  );
   await page.route('**/api/v1/users/', (route) =>
     route.fulfill({
       json: [

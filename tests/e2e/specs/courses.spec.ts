@@ -45,6 +45,8 @@ test('instructors see the create tile beside their own courses', async ({
   await expect(
     page.getByRole('dialog', { name: 'Filter courses' }),
   ).toBeVisible();
+  await expect(page.locator('#course-instructor')).toHaveCount(0);
+  await expect(page.locator('#course-tag')).toBeVisible();
 });
 
 test('instructors submit a saved course for approval', async ({ page }) => {
@@ -146,7 +148,7 @@ test('course filters send selected IDs, numbers and explicit false values and re
   ).toBeVisible();
 });
 
-test('course filters use category names and omit slug and tag-only filters', async ({
+test('course filters use category names and tags while omitting slug filters', async ({
   page,
 }) => {
   await session(page);
@@ -157,14 +159,17 @@ test('course filters use category names and omit slug and tag-only filters', asy
   await expect(
     page.getByRole('heading', { name: 'Course library · 21' }),
   ).toBeVisible();
-  expect(Object.fromEntries(state.requests.at(-1)!)).toEqual({ page: '1' });
+  expect(Object.fromEntries(state.requests.at(-1)!)).toEqual({
+    tag: 'tag-uuid',
+    page: '1',
+  });
   await page.getByRole('button', { name: /^Filters/ }).click();
   const drawer = page.getByRole('dialog', { name: 'Filter courses' });
   await expect(
     drawer.getByRole('button', { name: 'Categories' }),
   ).toBeVisible();
   await expect(drawer.getByLabel('course-category-slug')).toHaveCount(0);
-  await expect(drawer.getByLabel('course-tag')).toHaveCount(0);
+  await expect(drawer.locator('#course-tag')).toBeVisible();
   await expect(drawer.getByLabel('course-tag-slug')).toHaveCount(0);
 });
 

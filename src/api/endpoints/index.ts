@@ -56,6 +56,9 @@ export const ENDPOINTS = {
     LIST: '/api/v1/category/',
     DETAIL: (slug: string) => `/api/v1/category/${encodeURIComponent(slug)}/`,
   },
+  TAG: {
+    LIST: '/api/v1/tag/',
+  },
   LOCALIZATION: {
     LIST: '/api/v1/localization/',
     DETAIL: (id: string) => `/api/v1/localization/${encodeURIComponent(id)}/`,

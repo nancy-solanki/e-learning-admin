@@ -74,11 +74,13 @@ export interface AdminCourse {
   student_count: number;
 }
 export interface AdminCourseFilters {
-  page?: number | 'last';
+  page?: number;
   search?: string;
   status?: CourseStatus;
   category?: string;
-  instructor?: string;
+  category_slug?: string;
+  tag?: string;
+  tag_slug?: string;
   price_min?: number;
   price_max?: number;
   is_free?: boolean;
@@ -100,6 +102,18 @@ export async function listAdminCourses(
     signal,
   });
   return data;
+}
+
+export async function listAdminCoursesAt(
+  next: string,
+  signal?: AbortSignal,
+): Promise<AdminCoursePage> {
+  const base = new URL(API_ROOT || window.location.origin, window.location.origin);
+  const url = new URL(next, base);
+  if (url.origin !== base.origin || url.pathname !== ENDPOINTS.COURSE.ADMIN_LIST) {
+    throw new Error('Invalid course pagination URL.');
+  }
+  return (await api.get<AdminCoursePage>(url.href, { signal })).data;
 }
 
 export async function getAdminCourse(id: string): Promise<AdminCourse> {

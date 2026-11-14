@@ -51,6 +51,9 @@ export async function listNamedOptions(
 export const listCategoryOptions = (signal?: AbortSignal) =>
   listNamedOptions(ENDPOINTS.CATEGORY.LIST, 'title', signal);
 
+export const listTagOptions = (signal?: AbortSignal) =>
+  listNamedOptions(ENDPOINTS.TAG.LIST, 'name', signal);
+
 export async function listRatingCourseOptions(
   signal?: AbortSignal,
   instructorScoped = false,

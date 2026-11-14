@@ -3,6 +3,7 @@ import { AsyncSelect } from '../../components/ui/AsyncSelect';
 import {
   listCategoryOptions,
   listInstructorOptions,
+  listTagOptions,
 } from '../../api/services/options';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
@@ -22,10 +23,11 @@ import { OrderingSelect } from '../../components/ui/OrderingSelect';
 import { Field, Input } from '../../components/ui/Input';
 import { ContentApproval } from '../../components/ui/ContentApproval';
 import { useAccessState } from '../../state/access';
-import { apiErrorMessage } from '../../api/errors';
+import { apiErrorMessage, apiFieldErrors } from '../../api/errors';
 import {
   getAdminCourse,
   listAdminCourses,
+  listAdminCoursesAt,
   submitInstructorCourse,
   type AdminCourse,
   type AdminCoursePage,
@@ -238,15 +240,15 @@ function CourseFilters({
             loadOptions={listCategoryOptions}
           />
         </Field>
-        <Field label="Instructor" htmlFor="course-instructor">
+        <Field label="Tag" htmlFor="course-tag">
           <AsyncSelect
-            id="course-instructor"
-            label="Instructors"
-            allLabel="All instructors"
-            value={draft.instructor ?? ''}
-            onChange={(value) => update('instructor', value)}
-            queryKey={['course-filter-options', 'instructors']}
-            loadOptions={listInstructorOptions}
+            id="course-tag"
+            label="Tags"
+            allLabel="All tags"
+            value={draft.tag ?? ''}
+            onChange={(value) => update('tag', value)}
+            queryKey={['course-filter-options', 'tags']}
+            loadOptions={listTagOptions}
           />
         </Field>
         <OrderingSelect
@@ -312,7 +314,7 @@ export default function CoursesPage() {
   const status = params.get('status');
   if (statuses.includes(status as CourseStatus))
     filters.status = status as CourseStatus;
-  for (const key of ['category', 'instructor'] as const) {
+  for (const key of ['category', 'tag'] as const) {
     const value = params.get(key);
     if (value) filters[key] = value;
   }
@@ -326,22 +328,16 @@ export default function CoursesPage() {
     if (value === 'true' || value === 'false') filters[key] = value === 'true';
   }
   const pageValue = params.get('page');
-  const initialPage: number | 'last' =
-    pageValue === 'last'
-      ? 'last'
-      : pageValue && /^[1-9]\d*$/.test(pageValue)
-        ? Number(pageValue)
-        : 1;
+  const initialPage = pageValue && /^[1-9]\d*$/.test(pageValue)
+    ? Number(pageValue)
+    : 1;
   function setFilters(next: AdminCourseFilters, nextOrdering: string) {
     setParams((current) => {
       const updated = new URLSearchParams(current);
       for (const key of [
         'status',
         'category',
-        'category_slug',
         'tag',
-        'tag_slug',
-        'instructor',
         'price_min',
         'price_max',
         'is_free',
@@ -356,15 +352,7 @@ export default function CoursesPage() {
         }
       }
       if (nextOrdering) updated.set('ordering', nextOrdering);
-      if (
-        Object.keys(next).length ||
-        updated.has('search') ||
-        updated.has('ordering')
-      ) {
-        updated.set('page', '1');
-      } else {
-        updated.delete('page');
-      }
+      updated.set('page', '1');
       return updated;
     });
   }
@@ -385,7 +373,7 @@ export default function CoursesPage() {
     if (nextSearch !== searchInput) setSearchInput(nextSearch);
     if (nextOrdering !== ordering) setOrdering(nextOrdering);
   }, [params, searchInput, ordering]);
-  const search = useDebouncedValue(searchInput.trim());
+  const search = useDebouncedValue(searchInput.trim(), 300);
   const [selected, setSelected] = useState<AdminCourse | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const detailQuery = useQuery({
@@ -412,19 +400,17 @@ export default function CoursesPage() {
       ordering,
       initialPage,
     ],
-    initialPageParam: initialPage,
-    getNextPageParam: (lastPage: AdminCoursePage, _pages, lastPageParam) =>
-      lastPage.next && lastPageParam !== 'last' ? lastPageParam + 1 : undefined,
+    initialPageParam: initialPage as number | string,
+    getNextPageParam: (lastPage: AdminCoursePage) => lastPage.next ?? undefined,
     queryFn: ({ signal, pageParam }) =>
-      listAdminCourses(
-        {
-          ...(admin ? filters : { ...filters, instructor: undefined }),
-          search: search || undefined,
-          ordering: ordering || undefined,
-          page: pageParam,
-        },
-        signal,
-      ),
+      typeof pageParam === 'string'
+        ? listAdminCoursesAt(pageParam, signal)
+        : listAdminCourses({
+            ...filters,
+            search: search || undefined,
+            ordering: ordering || undefined,
+            page: pageParam,
+          }, signal),
     enabled: allowed && search === searchInput.trim(),
   });
   const courseSubmit = useMutation({
@@ -514,7 +500,7 @@ export default function CoursesPage() {
             }}
           />
         </div>
-        {admin && (
+        {(admin || instructor) && (
           <Button
             aria-haspopup="dialog"
             aria-expanded={filtersOpen}
@@ -532,7 +518,7 @@ export default function CoursesPage() {
           <Button onClick={clearFilters}>Clear filters</Button>
         )}
       </div>
-      {admin && filtersOpen && (
+      {(admin || instructor) && filtersOpen && (
         <CourseFilters
           key={params.toString()}
           filters={filters}
@@ -552,7 +538,16 @@ export default function CoursesPage() {
           role="alert"
           className="mb-4 rounded-lg bg-red-50 p-4 text-red-800"
         >
-          <p>{apiErrorMessage(query.error, 'Could not load courses.')}</p>
+          <p>{
+            apiErrorMessage(query.error, 'Could not load courses.', { includeFieldErrors: true })
+          }</p>
+          {Object.entries(apiFieldErrors(query.error)).length > 0 && (
+            <ul className="mt-2 list-inside list-disc text-sm">
+              {Object.entries(apiFieldErrors(query.error)).map(([field, message]) => (
+                <li key={field}><strong>{field}:</strong> {message}</li>
+              ))}
+            </ul>
+          )}
           <Button
             className="mt-3"
             onClick={() =>
@@ -577,9 +572,9 @@ export default function CoursesPage() {
           </h2>
           {courses.length === 0 && (
             <p className="mb-5 text-slate-500">
-              {instructor
+              {instructor && !searchInput && Object.keys(filters).length === 0
                 ? 'You have not created any courses yet.'
-                : 'No courses found. Try another search or adjust your filters.'}
+                : 'No matching courses found in your management scope.'}
             </p>
           )}
           <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">

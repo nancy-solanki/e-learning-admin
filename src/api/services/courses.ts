@@ -79,6 +79,7 @@ export interface AdminCourseFilters {
   status?: CourseStatus;
   category?: string;
   category_slug?: string;
+  instructor?: string;
   tag?: string;
   tag_slug?: string;
   price_min?: number;

@@ -3,7 +3,6 @@ import { AsyncSelect } from '../../components/ui/AsyncSelect';
 import {
   listCategoryOptions,
   listInstructorOptions,
-  listTagOptions,
 } from '../../api/services/options';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
@@ -240,15 +239,15 @@ function CourseFilters({
             loadOptions={listCategoryOptions}
           />
         </Field>
-        <Field label="Tag" htmlFor="course-tag">
+        <Field label="Instructor" htmlFor="course-instructor">
           <AsyncSelect
-            id="course-tag"
-            label="Tags"
-            allLabel="All tags"
-            value={draft.tag ?? ''}
-            onChange={(value) => update('tag', value)}
-            queryKey={['course-filter-options', 'tags']}
-            loadOptions={listTagOptions}
+            id="course-instructor"
+            label="Instructors"
+            allLabel="All instructors"
+            value={draft.instructor ?? ''}
+            onChange={(value) => update('instructor', value)}
+            queryKey={['course-filter-options', 'instructors']}
+            loadOptions={listInstructorOptions}
           />
         </Field>
         <OrderingSelect
@@ -314,7 +313,7 @@ export default function CoursesPage() {
   const status = params.get('status');
   if (statuses.includes(status as CourseStatus))
     filters.status = status as CourseStatus;
-  for (const key of ['category', 'tag'] as const) {
+  for (const key of ['category', 'instructor'] as const) {
     const value = params.get(key);
     if (value) filters[key] = value;
   }
@@ -336,7 +335,7 @@ export default function CoursesPage() {
       for (const key of [
         'status',
         'category',
-        'tag',
+        'instructor',
         'price_min',
         'price_max',
         'is_free',
@@ -351,7 +350,9 @@ export default function CoursesPage() {
         }
       }
       if (nextOrdering) updated.set('ordering', nextOrdering);
-      updated.set('page', '1');
+      if (Object.keys(next).length > 0 || nextOrdering)
+        updated.set('page', '1');
+      else updated.delete('page');
       return updated;
     });
   }
@@ -580,9 +581,11 @@ export default function CoursesPage() {
           </h2>
           {courses.length === 0 && (
             <p className="mb-5 text-slate-500">
-              {instructor && !searchInput && Object.keys(filters).length === 0
-                ? 'You have not created any courses yet.'
-                : 'No matching courses found in your management scope.'}
+              {searchInput
+                ? 'No courses found. Try another search or adjust your filters.'
+                : instructor && Object.keys(filters).length === 0
+                  ? 'You have not created any courses yet.'
+                  : 'No matching courses found in your management scope.'}
             </p>
           )}
           <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">

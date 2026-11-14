@@ -40,7 +40,11 @@ test('instructors see the create tile beside their own courses', async ({
   ).toHaveAttribute('href', '/courses/create');
   await expect(page.getByRole('heading', { name: 'Course 01' })).toBeVisible();
   expect(state.requests[0]?.has('instructor')).toBe(false);
-  await expect(page.getByRole('button', { name: /^Filters/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Filters/ })).toBeVisible();
+  await page.getByRole('button', { name: /^Filters/ }).click();
+  await expect(
+    page.getByRole('dialog', { name: 'Filter courses' }),
+  ).toBeVisible();
 });
 
 test('instructors submit a saved course for approval', async ({ page }) => {

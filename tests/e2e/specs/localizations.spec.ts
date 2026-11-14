@@ -14,7 +14,7 @@ test('sidebar localization link opens the localization page', async ({
 
   await page.goto('/');
   await expect(
-    page.getByRole('heading', { name: 'Welcome to your dashboard' }),
+    page.getByRole('heading', { name: 'Welcome, Ada to your dashboard' }),
   ).toBeVisible();
   await controls.openNavigation();
   await page

@@ -42,7 +42,7 @@ test('sign-in success, home navigation, and failed server logout', async ({
   await page.goto('/auth/sign-in');
   await controls.signIn(admin.email, 'password');
   await expect(
-    page.getByRole('heading', { name: 'Welcome to your dashboard' }),
+    page.getByRole('heading', { name: 'Welcome, Ada to your dashboard' }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Account menu' }).click();
   await page.getByRole('menuitem', { name: 'Profile', exact: true }).click();

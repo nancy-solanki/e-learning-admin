@@ -238,4 +238,14 @@ navigation and reloads; they do not configure the production web server.
 - `src/state/profile.ts`: shared profile query and cache updates after profile/avatar writes.
 - `src/state/session.ts`: in-memory session lifecycle and legacy key cleanup. Logout/account changes clear all cached server data; late responses cannot restore a previous profile.
 
+### Instructor dashboard chart ranges
+
+`GET /api/v1/dashboard/instructor/` accepts `period=daily|monthly|yearly` (defaults to `daily`). The same response drives both Recharts charts and keeps the existing dashboard metrics, top courses, and recent ratings. Scope the response to the authenticated instructor and return matching buckets for both series, including zero-value buckets:
+
+- `daily`: 30 UTC calendar-day buckets; `date` is `YYYY-MM-DD`.
+- `monthly`: 12 calendar-month buckets; `date` is `YYYY-MM`.
+- `yearly`: 5 calendar-year buckets; `date` is `YYYY`.
+
+Each `enrollment_trend` bucket has `{ "date": "...", "count": 0 }`. Each `course_earnings` bucket has `{ "date": "...", "amount": "0.00" }`; amounts are completed course earnings as decimal strings. Include `currency` as the wallet ISO currency code for formatting. Bucket dates should be ascending and use one aligned period for both chart series. Unknown `period` values should return HTTP 400 with validation details.
+
 Queries use a 30-second freshness window (the profile is cached until explicitly refreshed or updated). Automatic retries and window-focus refetching are disabled; existing retry buttons remain available. Form drafts, selection, and modal visibility remain local React state.

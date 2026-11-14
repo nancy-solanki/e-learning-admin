@@ -11,4 +11,5 @@ export const queryKeys = {
   categories: ['categories'] as const,
   localizations: ['localizations'] as const,
   ratings: ['ratings'] as const,
+  instructorDashboard: ['instructor-dashboard'] as const,
 };

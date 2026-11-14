@@ -27,7 +27,6 @@ const transactionTypes: WalletTransactionType[] = [
   'earning',
   'withdrawal',
   'refund',
-  'adjustment',
 ];
 const transactionStatuses: WalletTransactionStatus[] = [
   'completed',
@@ -413,8 +412,8 @@ export default function WalletsPage() {
                       {data.payout_account.bank_name}
                     </h2>
                     <p className="mt-1 text-xs text-[#858697]">
-                      Bank transfer · Account ending in{' '}
-                      {data.payout_account.account_last4}
+                      {titleCase(data.payout_account.type.replaceAll('_', ' '))}{' '}
+                      · Account ending in {data.payout_account.account_last4}
                     </p>
                   </div>
                   <div className="border-t border-[#f0f0f5] pt-4">

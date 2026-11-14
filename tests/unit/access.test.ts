@@ -44,6 +44,7 @@ describe('application role access', () => {
       'coupons',
       'enrollments',
       'bank-accounts',
+      'wallets',
     ] as const) {
       expect(canAccessPage('instructor', page)).toBe(true);
     }
@@ -52,7 +53,6 @@ describe('application role access', () => {
       'categories',
       'sections',
       'lectures',
-      'wallets',
       'localizations',
     ] as const) {
       expect(canAccessPage('instructor', page)).toBe(false);
@@ -89,6 +89,7 @@ describe('application role access', () => {
     expect(getAccessibleDestination(instructor, '/enrollments')).toBe(
       '/enrollments',
     );
+    expect(getAccessibleDestination(instructor, '/wallets')).toBe('/wallets');
     expect(getAccessibleDestination(instructor, '/sections')).toBe('/');
     expect(getAccessibleDestination(instructor, 'https://example.com')).toBe(
       '/',

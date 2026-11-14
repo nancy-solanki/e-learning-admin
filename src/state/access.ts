@@ -40,6 +40,7 @@ const instructorPages: AppPage[] = [
   'coupons',
   'enrollments',
   'bank-accounts',
+  'wallets',
   'profile',
 ];
 

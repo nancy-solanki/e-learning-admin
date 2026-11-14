@@ -85,6 +85,9 @@ export const ENDPOINTS = {
       `/api/v1/wallet/transactions/${encodeURIComponent(id)}/`,
     TRANSACTION_EXPORT: '/api/v1/wallet/transactions/export/',
   },
+  DASHBOARD: {
+    INSTRUCTOR: '/api/v1/dashboard/instructor/',
+  },
   BANK: {
     LIST: '/api/v1/bank/',
     DETAIL: (id: string | number) => `/api/v1/bank/${id}/`,

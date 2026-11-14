@@ -12,7 +12,7 @@ for (const kind of ['section', 'lecture'] as const) {
     await page.goto(`/${plural}`);
     await expect(page).toHaveURL('/');
     await expect(
-      page.getByRole('heading', { name: 'Welcome to your dashboard' }),
+      page.getByRole('heading', { name: 'Welcome back, Grace' }),
     ).toBeVisible();
   });
 

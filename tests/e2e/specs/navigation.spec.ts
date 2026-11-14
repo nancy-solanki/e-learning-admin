@@ -9,10 +9,10 @@ test('static welcome and responsive navigation', async ({
   await session(page);
   await page.goto('/');
   await expect(
-    page.getByRole('heading', { name: 'Welcome to your dashboard' }),
+    page.getByRole('heading', { name: 'Welcome, Ada to your dashboard' }),
   ).toBeVisible();
   await expect(
-    page.getByText('Reports and insights will be available here soon.', {
+    page.getByText('Manage your learning community from one place.', {
       exact: false,
     }),
   ).toBeVisible();
@@ -82,7 +82,7 @@ test('account dropdown supports keyboard navigation and SPA profile routing', as
   await session(page);
   await page.goto('/');
   await expect(
-    page.getByRole('heading', { name: 'Welcome to your dashboard' }),
+    page.getByRole('heading', { name: 'Welcome, Ada to your dashboard' }),
   ).toBeVisible();
   await expect(page.getByText('Manage profile', { exact: true })).toHaveCount(
     0,
@@ -138,18 +138,13 @@ test('instructor navigation contains only their accessible management pages', as
     'Coupons',
     'Enrollments',
     'Bank Account',
+    'Wallets',
   ]) {
     await expect(
       page.getByRole('link', { name: label, exact: true }),
     ).toBeVisible();
   }
-  for (const label of [
-    'Users',
-    'Category',
-    'Sections',
-    'Lectures',
-    'Wallets',
-  ]) {
+  for (const label of ['Users', 'Category', 'Sections', 'Lectures']) {
     await expect(
       page.getByRole('link', { name: label, exact: true }),
     ).toHaveCount(0);

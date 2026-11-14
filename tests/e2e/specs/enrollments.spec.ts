@@ -141,6 +141,23 @@ test('instructors can access enrollments from navigation and direct URL', async 
           role: ['instructor'],
         },
       });
+    if (url.pathname === '/api/v1/dashboard/instructor/')
+      return route.fulfill({
+        json: {
+          instructor: { first_name: 'Ada' },
+          metrics: {
+            published_courses: 0,
+            total_students: 0,
+            average_rating: null,
+            new_students_30d: 0,
+          },
+          enrollment_trend: [],
+          course_earnings: [],
+          currency: 'INR',
+          top_courses: [],
+          recent_ratings: [],
+        },
+      });
     if (url.pathname.includes('/enroll/')) reportRequests++;
     return route.fulfill({ json: envelope([]) });
   });

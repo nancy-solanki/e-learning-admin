@@ -26,6 +26,55 @@ export const test = base.extend<{
         ['/api/v1/users/me/', '/api/v1/auth/refresh/'].includes(path)
       ) {
         await route.fulfill({ status: 401, json: {} });
+      } else if (path === '/api/v1/dashboard/instructor/') {
+        await route.fulfill({
+          json: {
+            instructor: { first_name: 'Grace' },
+            metrics: {
+              published_courses: 0,
+              total_students: 0,
+              average_rating: null,
+              new_students_30d: 0,
+            },
+            enrollment_trend: [],
+            course_earnings: [],
+            currency: 'INR',
+            top_courses: [],
+            recent_ratings: [],
+          },
+        });
+      } else if (path === '/api/v1/wallet/overview/') {
+        await route.fulfill({
+          json: {
+            currency: 'INR',
+            as_of: '2026-11-15T00:00:00Z',
+            history_started_at: '2026-01-01T00:00:00Z',
+            history_complete: true,
+            opening_balance: '0.00',
+            period: {
+              start: '2026-11-01',
+              end: '2026-11-15',
+              timezone: 'UTC',
+            },
+            summary: {
+              available_balance: '0.00',
+              period_earnings: '0.00',
+              completed_payouts: '0.00',
+              refunds: '0.00',
+              earning_count: 0,
+              completed_payout_count: 0,
+              refund_count: 0,
+              pending_payout_amount: '0.00',
+              pending_payout_count: 0,
+              latest_pending_payout_at: null,
+            },
+            payout_account: null,
+          },
+        });
+      } else if (path === '/api/v1/wallet/transactions/') {
+        await route.fulfill({
+          json: { count: 0, next: null, previous: null, results: [] },
+        });
       } else {
         unmocked.push(`${route.request().method()} ${path}`);
         await route.fulfill({

@@ -24,18 +24,18 @@ Feature: Route access and session boundaries
     Given I am signed in as instructor
     When I open "<path>"
     Then the URL is "/"
-    And I see the heading "Welcome to your dashboard"
+    And I see the heading "Welcome back, Grace"
 
     Examples:
       | path      |
       | /sections |
       | /lectures |
 
-  Scenario: An instructor cannot open the admin wallet
+  Scenario: An instructor can open their own wallet
     Given I am signed in as instructor
     When I open "/wallets"
-    Then the URL is "/"
-    And I see the heading "Welcome to your dashboard"
+    Then the URL is "/wallets"
+    And I see the heading "Wallet."
 
   Scenario: A learner cannot open the wallet page
     Given I am signed in as learner
@@ -55,7 +55,7 @@ Feature: Route access and session boundaries
     Then I see the heading "Page not found"
     When I follow the link "Back to home"
     Then the URL is "/"
-    And I see the heading "Welcome to your dashboard"
+    And I see the heading "Welcome, Ada to your dashboard"
 
   Scenario: A learner cannot access the course catalog
     Given I am signed in as learner

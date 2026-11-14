@@ -608,28 +608,6 @@ export default function CouponsPage() {
           Create coupon
         </Button>
       </div>
-      <div className="coupon-hero">
-        <div>
-          <span className="coupon-hero-label">
-            GOOD THINGS START WITH AN OFFER
-          </span>
-          <h2>
-            Open the door to
-            <br />
-            something new.
-          </h2>
-          <p>Thoughtful offers that turn curiosity into learning.</p>
-        </div>
-        <div className="coupon-hero-ticket" aria-hidden="true">
-          <CouponIcon className="h-8 w-8" />
-          <strong>
-            Learn more.
-            <br />
-            Spend less.
-          </strong>
-          <span>THE NEXT CHAPTER STARTS HERE</span>
-        </div>
-      </div>
       {notice && (
         <div role="status" className="category-notice">
           {notice}

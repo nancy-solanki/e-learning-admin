@@ -148,6 +148,35 @@ test('course filters send selected IDs, numbers and explicit false values and re
   ).toBeVisible();
 });
 
+test('admins can filter by tag and instructor IDs and reset both filters', async ({
+  page,
+  controls,
+}) => {
+  await session(page);
+  const state = await mockCourses(page);
+  await page.goto('/courses?page=2');
+  await page.getByRole('button', { name: /^Filters/ }).click();
+  const drawer = page.getByRole('dialog', { name: 'Filter courses' });
+  await controls.choose('Tags', 'Beginner', drawer);
+  await controls.choose(
+    'Instructors',
+    'Ada Instructor ada@example.com',
+    drawer,
+  );
+  await page.getByRole('button', { name: 'Apply filters' }).click();
+
+  expect(Object.fromEntries(state.requests.at(-1)!)).toMatchObject({
+    tag: 'tag-uuid',
+    instructor: 'instructor-1',
+    page: '1',
+  });
+  await page.getByRole('button', { name: /^Filters/ }).click();
+  await page.getByRole('button', { name: 'Reset filters' }).click();
+  await page.getByRole('button', { name: 'Apply filters' }).click();
+  await expect(page).toHaveURL('/courses');
+  expect(Object.fromEntries(state.requests.at(-1)!)).toEqual({ page: '1' });
+});
+
 test('course filters use category names and tags while omitting slug filters', async ({
   page,
 }) => {

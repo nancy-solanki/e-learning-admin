@@ -40,6 +40,7 @@ export const adminNavigation: NavigationItem[] = [
   { label: 'Wallets', icon: WalletIcon, path: '/wallets' },
   { label: 'Coupons', icon: CouponIcon, path: '/coupons' },
   { label: 'Orders', icon: OrderIcon, path: '/orders' },
+  { label: 'Transactions', icon: WalletIcon, path: '/transactions' },
   { label: 'Enrollments', icon: EnrollmentIcon, path: '/enrollments' },
   { label: 'Other', icon: GearIcon, submenu: ['All Payment Transactions'] },
   {

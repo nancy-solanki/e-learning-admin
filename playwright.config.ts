@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 import { defineBddConfig } from 'playwright-bdd';
 
+const previewPort = process.env.PLAYWRIGHT_PORT ?? '4173';
+
 const generatedTests = defineBddConfig({
   features: 'tests/e2e/features/**/*.feature',
   steps: ['tests/e2e/steps/**/*.ts', 'tests/e2e/fixtures/test.ts'],
@@ -19,7 +21,7 @@ export default defineConfig({
     ['junit', { outputFile: 'test-results/junit.xml' }],
   ],
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: `http://127.0.0.1:${previewPort}`,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     serviceWorkers: 'block',
@@ -32,9 +34,8 @@ export default defineConfig({
     { name: `regression-${name}`, testDir: './tests/e2e/specs', use },
   ]),
   webServer: {
-    command:
-      'yarn build && yarn preview --host 127.0.0.1 --port 4173 --strictPort',
-    url: 'http://127.0.0.1:4173',
+    command: `yarn build && yarn preview --host 127.0.0.1 --port ${previewPort} --strictPort`,
+    url: `http://127.0.0.1:${previewPort}`,
     reuseExistingServer: false,
     env: { VITE_API_ROOT_URL: '' },
   },

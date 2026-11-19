@@ -38,6 +38,7 @@ import WalletsPage from './pages/wallets/WalletsPage';
 import EnrollmentsPage from './pages/enrollments/EnrollmentsPage';
 import RatingsPage from './pages/ratings/RatingsPage';
 import OrdersPage from './pages/orders/OrdersPage';
+import TransactionsPage from './pages/transactions/TransactionsPage';
 import NotFoundPage from './pages/NotFoundPage';
 import './styles.css';
 
@@ -190,6 +191,9 @@ export default function App() {
               </Route>
               <Route element={<AccessRoute page="orders" />}>
                 <Route path="orders" element={<OrdersPage />} />
+              </Route>
+              <Route element={<AccessRoute page="transactions" />}>
+                <Route path="transactions" element={<TransactionsPage />} />
               </Route>
               <Route element={<AccessRoute page="users" />}>
                 <Route path="users" element={<UsersPage />} />

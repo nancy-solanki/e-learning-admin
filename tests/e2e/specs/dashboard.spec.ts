@@ -69,7 +69,12 @@ test('instructor dashboard shows metrics, course and rating data and requests ea
   await expect(
     page.getByRole('img', { name: /course earnings/ }),
   ).toBeVisible();
-  await expect(metrics.getByText('₹1,250.50', { exact: true })).toBeVisible();
+  await expect(
+    page
+      .getByRole('region', { name: 'Performance charts' })
+      .locator('p')
+      .filter({ hasText: '₹1,250.50' }),
+  ).toBeVisible();
   await expect(
     page.getByRole('link', { name: /Practical TypeScript/ }),
   ).toHaveAttribute('href', '/courses/course-1/edit');
@@ -81,7 +86,7 @@ test('instructor dashboard shows metrics, course and rating data and requests ea
       page.getByRole('button', { name: period, exact: true }),
     ).toHaveAttribute('aria-pressed', 'true');
   }
-  expect(periods).toEqual(['daily', 'monthly', 'yearly', 'daily']);
+  expect(periods).toEqual(['daily', 'monthly', 'yearly']);
 });
 
 test('instructor dashboard shows empty states and retries a failed dashboard request', async ({

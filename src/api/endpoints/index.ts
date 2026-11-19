@@ -84,10 +84,14 @@ export const ENDPOINTS = {
   },
   WALLET: {
     OVERVIEW: '/api/v1/wallet/overview/',
+    OPTIONS: '/api/v1/wallet/options/',
     TRANSACTIONS: '/api/v1/wallet/transactions/',
     TRANSACTION_DETAIL: (id: string) =>
       `/api/v1/wallet/transactions/${encodeURIComponent(id)}/`,
     TRANSACTION_EXPORT: '/api/v1/wallet/transactions/export/',
+  },
+  TRANSACTION: {
+    LIST: '/api/v1/transaction/',
   },
   DASHBOARD: {
     INSTRUCTOR: '/api/v1/dashboard/instructor/',

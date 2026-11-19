@@ -3,8 +3,10 @@ import { Button } from '../ui/Button';
 import { Field, Input, Textarea } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { FileUpload } from '../ui/FileUpload';
+import { MediaUpload } from '../ui/MediaUpload';
 import type { AdminSection } from '../../api/services/sections';
 import type { AdminLecture, LectureType } from '../../api/services/lectures';
+import { useObjectUrl } from '../../hooks/useObjectUrl';
 
 export function SectionForm({
   record,
@@ -84,6 +86,8 @@ export function LectureForm({
   const [file, setFile] = useState<File | null>(null);
   const [thumbnail, setThumbnail] = useState<File | null>(null);
   const [fileError, setFileError] = useState('');
+  const videoPreviewUrl = useObjectUrl(file);
+  const thumbnailPreviewUrl = useObjectUrl(thumbnail);
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
@@ -181,20 +185,38 @@ export function LectureForm({
             htmlFor="lecture-video"
             required={!record?.source}
           >
-            <FileUpload
-              id="lecture-video"
-              name="source"
-              accept="video/*"
-              actionLabel="Choose video"
-              emptyLabel="No video selected"
-              hint="Video files"
-              currentFileLabel={
-                record?.source ? 'Current video uploaded' : undefined
-              }
-              file={file}
-              onChange={chooseFile}
-              disabled={pending}
-            />
+            {videoPreviewUrl ||
+            (!file && record?.lecture_type === 'video' && record.source) ? (
+              <MediaUpload
+                id="lecture-video"
+                name="source"
+                accept="video/*"
+                file={file}
+                existingUrl={
+                  record?.lecture_type === 'video' ? record.source : undefined
+                }
+                previewUrl={videoPreviewUrl}
+                previewType="video"
+                previewAlt="Video preview"
+                onChange={chooseFile}
+                disabled={pending}
+              />
+            ) : (
+              <FileUpload
+                id="lecture-video"
+                name="source"
+                accept="video/*"
+                actionLabel="Choose video"
+                emptyLabel="No video selected"
+                hint="Video files"
+                currentFileLabel={
+                  record?.source ? 'Current video uploaded' : undefined
+                }
+                file={file}
+                onChange={chooseFile}
+                disabled={pending}
+              />
+            )}
           </Field>
         ) : (
           <Field
@@ -215,20 +237,35 @@ export function LectureForm({
           </Field>
         )}
         <Field label="Thumbnail (optional)" htmlFor="lecture-thumbnail">
-          <FileUpload
-            id="lecture-thumbnail"
-            name="thumbnail"
-            accept="image/*"
-            actionLabel="Choose thumbnail"
-            emptyLabel="No thumbnail selected"
-            hint="Image files"
-            currentFileLabel={
-              record?.thumbnail ? 'Current thumbnail uploaded' : undefined
-            }
-            file={thumbnail}
-            onChange={chooseThumbnail}
-            disabled={pending}
-          />
+          {thumbnailPreviewUrl || (!thumbnail && record?.thumbnail) ? (
+            <MediaUpload
+              id="lecture-thumbnail"
+              name="thumbnail"
+              accept="image/*"
+              file={thumbnail}
+              existingUrl={record?.thumbnail}
+              previewUrl={thumbnailPreviewUrl}
+              previewType="image"
+              previewAlt="Thumbnail preview"
+              onChange={chooseThumbnail}
+              disabled={pending}
+            />
+          ) : (
+            <FileUpload
+              id="lecture-thumbnail"
+              name="thumbnail"
+              accept="image/*"
+              actionLabel="Choose thumbnail"
+              emptyLabel="No thumbnail selected"
+              hint="Image files"
+              currentFileLabel={
+                record?.thumbnail ? 'Current thumbnail uploaded' : undefined
+              }
+              file={thumbnail}
+              onChange={chooseThumbnail}
+              disabled={pending}
+            />
+          )}
         </Field>
         {(error || fileError) && (
           <p role="alert" className="text-sm text-red-700">

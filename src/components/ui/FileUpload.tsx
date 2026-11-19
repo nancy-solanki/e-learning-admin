@@ -11,6 +11,7 @@ export function FileUpload({
   file,
   onChange,
   disabled = false,
+  compact = false,
 }: {
   id: string;
   name: string;
@@ -22,6 +23,7 @@ export function FileUpload({
   file: File | null;
   onChange: (file: File | null) => void;
   disabled?: boolean;
+  compact?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -61,32 +63,45 @@ export function FileUpload({
           event.target.value = '';
         }}
       />
-      <span className="ui-file-upload-icon" aria-hidden="true">
-        ↑
-      </span>
-      <button
-        type="button"
-        className="ui-file-upload-action"
-        disabled={disabled}
-        onClick={() => input.current?.click()}
-      >
-        {file || currentFileLabel ? actionLabel : 'Click to upload'}
-        <span> or drag and drop</span>
-      </button>
-      <p className="ui-file-upload-name" title={file?.name}>
-        {file?.name ?? currentFileLabel ?? emptyLabel}
-      </p>
-      {!file && <p className="ui-file-upload-hint">{hint}</p>}
-      {file && (
+      {compact ? (
         <button
           type="button"
-          className="ui-file-upload-remove"
+          className="ui-file-upload-action"
           disabled={disabled}
-          onClick={() => onChange(null)}
-          aria-label={`Remove ${file.name}`}
+          onClick={() => input.current?.click()}
         >
-          Remove selected file
+          {actionLabel}
         </button>
+      ) : (
+        <>
+          <span className="ui-file-upload-icon" aria-hidden="true">
+            ↑
+          </span>
+          <button
+            type="button"
+            className="ui-file-upload-action"
+            disabled={disabled}
+            onClick={() => input.current?.click()}
+          >
+            {file || currentFileLabel ? actionLabel : 'Click to upload'}
+            <span> or drag and drop</span>
+          </button>
+          <p className="ui-file-upload-name" title={file?.name}>
+            {file?.name ?? currentFileLabel ?? emptyLabel}
+          </p>
+          {!file && <p className="ui-file-upload-hint">{hint}</p>}
+          {file && (
+            <button
+              type="button"
+              className="ui-file-upload-remove"
+              disabled={disabled}
+              onClick={() => onChange(null)}
+              aria-label={`Remove ${file.name}`}
+            >
+              Remove selected file
+            </button>
+          )}
+        </>
       )}
     </div>
   );

@@ -69,7 +69,7 @@ test('instructor dashboard shows metrics, course and rating data and requests ea
   await expect(
     page.getByRole('img', { name: /course earnings/ }),
   ).toBeVisible();
-  await expect(page.getByText('₹1,250.50', { exact: true })).toBeVisible();
+  await expect(metrics.getByText('₹1,250.50', { exact: true })).toBeVisible();
   await expect(
     page.getByRole('link', { name: /Practical TypeScript/ }),
   ).toHaveAttribute('href', '/courses/course-1/edit');

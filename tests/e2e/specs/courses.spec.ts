@@ -165,16 +165,20 @@ test('admins can filter by tag and instructor IDs and reset both filters', async
   );
   await page.getByRole('button', { name: 'Apply filters' }).click();
 
-  expect(Object.fromEntries(state.requests.at(-1)!)).toMatchObject({
-    tag: 'tag-uuid',
-    instructor: 'instructor-1',
-    page: '1',
-  });
+  await expect
+    .poll(() => Object.fromEntries(state.requests.at(-1) ?? []))
+    .toMatchObject({
+      tag: 'tag-uuid',
+      instructor: 'instructor-1',
+      page: '1',
+    });
   await page.getByRole('button', { name: /^Filters/ }).click();
   await page.getByRole('button', { name: 'Reset filters' }).click();
   await page.getByRole('button', { name: 'Apply filters' }).click();
   await expect(page).toHaveURL('/courses');
-  expect(Object.fromEntries(state.requests.at(-1)!)).toEqual({ page: '1' });
+  await expect
+    .poll(() => Object.fromEntries(state.requests.at(-1) ?? []))
+    .toEqual({ page: '1' });
 });
 
 test('course filters use category names and tags while omitting slug filters', async ({

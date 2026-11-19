@@ -4,6 +4,7 @@ import { ENDPOINTS } from '../endpoints';
 import { listCourseOptions } from './courses';
 import { listUsers } from './users';
 import { isInstructor } from '../../lib/permissions';
+import { listCoupons } from './coupons';
 
 export type ListOption = {
   value: string;
@@ -99,4 +100,29 @@ export async function listInstructorOptions(
       ...(user.username ? { username: user.username } : {}),
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+export async function listCouponOptions(
+  signal?: AbortSignal,
+): Promise<ListOption[]> {
+  const options: ListOption[] = [];
+  let page = 1;
+  let count = Number.POSITIVE_INFINITY;
+  while (options.length < count) {
+    const response = await listCoupons(
+      { page, page_size: 100, ordering: 'code' },
+      signal,
+    );
+    options.push(
+      ...response.results.map((coupon) => ({
+        value: coupon.id,
+        label: coupon.code,
+        description: coupon.course_title,
+      })),
+    );
+    count = response.count;
+    if (!response.next) break;
+    page += 1;
+  }
+  return options.sort((a, b) => a.label.localeCompare(b.label));
 }

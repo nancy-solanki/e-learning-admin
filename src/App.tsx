@@ -37,6 +37,7 @@ import BankAccountsPage from './pages/bank/BankAccountsPage';
 import WalletsPage from './pages/wallets/WalletsPage';
 import EnrollmentsPage from './pages/enrollments/EnrollmentsPage';
 import RatingsPage from './pages/ratings/RatingsPage';
+import OrdersPage from './pages/orders/OrdersPage';
 import NotFoundPage from './pages/NotFoundPage';
 import './styles.css';
 
@@ -186,6 +187,9 @@ export default function App() {
               </Route>
               <Route element={<AccessRoute page="enrollments" />}>
                 <Route path="enrollments" element={<EnrollmentsPage />} />
+              </Route>
+              <Route element={<AccessRoute page="orders" />}>
+                <Route path="orders" element={<OrdersPage />} />
               </Route>
               <Route element={<AccessRoute page="users" />}>
                 <Route path="users" element={<UsersPage />} />

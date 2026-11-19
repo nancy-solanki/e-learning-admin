@@ -8,6 +8,7 @@ export type AppPage =
   | 'ratings'
   | 'coupons'
   | 'enrollments'
+  | 'orders'
   | 'bank-accounts'
   | 'wallets'
   | 'sections'
@@ -23,6 +24,7 @@ const pageByPath: Record<string, AppPage> = {
   '/ratings': 'ratings',
   '/coupons': 'coupons',
   '/enrollments': 'enrollments',
+  '/orders': 'orders',
   '/bank-accounts': 'bank-accounts',
   '/wallets': 'wallets',
   '/sections': 'sections',

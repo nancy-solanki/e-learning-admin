@@ -66,6 +66,10 @@ export const ENDPOINTS = {
   ENROLL: {
     MANAGEMENT: '/api/v1/enroll/management/',
   },
+  ORDER: {
+    LIST: '/api/v1/order/user/',
+    DETAIL: (id: string) => `/api/v1/order/user/${encodeURIComponent(id)}/`,
+  },
   RATING: {
     INSTRUCTOR_LIST: '/api/v1/rating/instructor/',
     MANAGEMENT: '/api/v1/rating/management/',

@@ -39,7 +39,7 @@ export const adminNavigation: NavigationItem[] = [
   { label: 'Ratings', icon: StarIcon, path: '/ratings' },
   { label: 'Wallets', icon: WalletIcon, path: '/wallets' },
   { label: 'Coupons', icon: CouponIcon, path: '/coupons' },
-  { label: 'Orders', icon: OrderIcon },
+  { label: 'Orders', icon: OrderIcon, path: '/orders' },
   { label: 'Enrollments', icon: EnrollmentIcon, path: '/enrollments' },
   { label: 'Other', icon: GearIcon, submenu: ['All Payment Transactions'] },
   {
